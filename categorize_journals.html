@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Journal Categorizer — Lippincott Law</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Georgia', serif; background: #f7f5f0; color: #1a1a1a; min-height: 100vh; }
+  header { background: #1a1a1a; color: #f7f5f0; padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { font-size: 18px; font-weight: 400; letter-spacing: .02em; }
+  header .badge { font-size: 11px; font-family: monospace; background: rgba(255,255,255,.12); padding: 3px 8px; border-radius: 2px; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 20px; }
+  .card { background: #fff; border: 1px solid #e5e0d8; border-radius: 3px; margin-bottom: 20px; }
+  .card-head { padding: 14px 18px; border-bottom: 1px solid #e5e0d8; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .card-head h2 { font-size: 14px; font-weight: 600; }
+  .card-body { padding: 16px 18px; }
+  .btn { padding: 7px 16px; border: 1px solid #c8bfaa; border-radius: 2px; background: #fff; cursor: pointer; font-family: Georgia, serif; font-size: 13px; }
+  .btn:hover:not(:disabled) { background: #f7f5f0; }
+  .btn-primary { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+  .btn-primary:hover:not(:disabled) { background: #333; }
+  .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-success { background: #15803d; color: #fff; border-color: #15803d; }
+  .btn-sm { padding: 3px 10px; font-size: 11px; }
+  .stat-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .stat { background: #f7f5f0; border: 1px solid #e5e0d8; border-radius: 2px; padding: 10px 16px; min-width: 100px; }
+  .stat .num { font-size: 22px; font-weight: 700; font-family: monospace; }
+  .stat .lbl { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: .04em; }
+  .progress-bar { height: 6px; background: #e5e0d8; border-radius: 3px; overflow: hidden; margin: 10px 0; }
+  .progress-bar .fill { height: 100%; background: #1a1a1a; transition: width .3s; }
+  .log { font-family: monospace; font-size: 11px; color: #444; background: #f7f5f0; border: 1px solid #e5e0d8; padding: 10px; border-radius: 2px; max-height: 150px; overflow-y: auto; white-space: pre-wrap; }
+  .review-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .review-table th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: #888; padding: 6px 8px; border-bottom: 2px solid #e5e0d8; font-family: monospace; font-weight: 600; }
+  .review-table td { padding: 7px 8px; border-bottom: 1px solid #f0ece4; vertical-align: top; }
+  .review-table tr:hover td { background: #faf9f6; }
+  .review-table tr.approved td { background: #f0fdf4; }
+  select.cat-select { font-size: 11px; padding: 2px 4px; border: 1px solid #c8bfaa; border-radius: 2px; font-family: Georgia, serif; max-width: 200px; }
+  .confidence { display: inline-block; font-size: 9px; font-family: monospace; padding: 1px 5px; border-radius: 2px; }
+  .conf-high { background: #dcfce7; color: #15803d; }
+  .conf-med  { background: #fef9c3; color: #a16207; }
+  .conf-low  { background: #fee2e2; color: #b91c1c; }
+  .conf-err  { background: #e5e0d8; color: #666; }
+  .note-text { color: #444; line-height: 1.5; }
+  .matter-lbl { font-size: 10px; font-family: monospace; color: #888; }
+  .filter-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; font-size: 12px; }
+  .filter-row select { font-size: 12px; padding: 4px 8px; border: 1px solid #c8bfaa; border-radius: 2px; font-family: Georgia, serif; }
+  .empty { text-align: center; padding: 40px; color: #888; font-style: italic; line-height: 1.8; }
+  .msg { padding: 10px 14px; border-radius: 2px; font-size: 13px; margin-bottom: 14px; line-height: 1.6; }
+  .msg-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+  .msg-warn { background: #fef9c3; border: 1px solid #fde68a; color: #92400e; }
+  .msg-err  { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+  .sticky-foot { position: sticky; bottom: 0; background: #fff; border-top: 2px solid #e5e0d8; padding: 12px 18px; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+  .review-count { font-size: 12px; color: #666; font-family: monospace; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Journal Entry Categorizer — One-Time AI Pass</h1>
+  <span class="badge">Lippincott Law Docket · Admin Tool</span>
+</header>
+
+<div class="container">
+
+  <div class="card" id="step1-card">
+    <div class="card-head">
+      <h2>Step 1 — Load &amp; analyze</h2>
+      <button class="btn btn-primary" id="load-btn" onclick="loadAndAnalyze()">Load &amp; run AI analysis</button>
+    </div>
+    <div class="card-body">
+      <div class="msg msg-info">
+        Fetches all <strong>General</strong> journal entries, sends them to Claude in batches of 25 to suggest better categories, then lets you review and approve before anything is saved.
+      </div>
+      <div id="api-error" style="display:none;" class="msg msg-err"></div>
+      <div class="stat-row" id="stats" style="display:none;">
+        <div class="stat"><div class="num" id="stat-total">—</div><div class="lbl">Total entries</div></div>
+        <div class="stat"><div class="num" id="stat-analyzed">0</div><div class="lbl">Analyzed</div></div>
+        <div class="stat"><div class="num" id="stat-high">0</div><div class="lbl">High confidence</div></div>
+        <div class="stat"><div class="num" id="stat-changed">0</div><div class="lbl">Suggested change</div></div>
+        <div class="stat"><div class="num" id="stat-errors">0</div><div class="lbl">API errors</div></div>
+      </div>
+      <div id="progress-wrap" style="display:none;">
+        <div class="progress-bar"><div class="fill" id="progress-fill" style="width:0%"></div></div>
+        <div class="log" id="log"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="step2-card" style="display:none;">
+    <div class="card-head">
+      <h2>Step 2 — Review &amp; approve</h2>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-sm" onclick="approveFiltered()">✓ Approve visible</button>
+        <button class="btn btn-sm" onclick="approveAll('high')">✓ Approve all high-conf</button>
+        <button class="btn btn-sm" onclick="unapproveAll()">✕ Clear all</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="filter-row">
+        <label>Show:</label>
+        <select id="filter-conf" onchange="renderReview()">
+          <option value="all" selected>All entries</option>
+          <option value="changed">Suggested changes only</option>
+          <option value="high">High confidence</option>
+          <option value="med">Medium confidence</option>
+          <option value="low">Low confidence</option>
+          <option value="error">API errors</option>
+          <option value="approved">Approved only</option>
+        </select>
+        <label>Category:</label>
+        <select id="filter-cat" onchange="renderReview()">
+          <option value="">Any</option>
+        </select>
+      </div>
+      <div id="review-container"></div>
+    </div>
+    <div class="sticky-foot">
+      <span class="review-count" id="review-count">—</span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="exportCSV()">Export CSV</button>
+        <button class="btn btn-success" id="save-btn" onclick="saveApproved()" disabled>Save approved changes</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const SUPA_URL = 'https://qzwxtrijygcsjhrnxqtn.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF6d3h0cmlqeWdjc2pocm54cXRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NTA0MTksImV4cCI6MjA5MzIyNjQxOX0.MVvtoN-3eP52U7gTc2LciLMpz48OPNFCXlLXZ8xWcVM';
+const { createClient } = supabase;
+const db = createClient(SUPA_URL, SUPA_KEY);
+
+const CATEGORIES = ['General','Case Update','Status Change','Case Deadline','Military Check','Bankruptcy Check','Client Settlement Offer','Debtor Settlement Offer','Settlement Paid','Foreclosure Date','LAR Received','NOD Sent','NOD Expired','Demand Letter Sent','Cure Tendered','Sub Service Motion Filed','Substitute Service Order Received','Suit Filed','Service Requested','Service Accomplished','Answer Filed','Default Judgment Entered','Summary Judgment Entered','Final Judgment Entered','Trial Set','Trial Held','Writ Issued','Abstract Filed','Foreclosure Posted','Foreclosure Sale Held','Property Surrendered','Deficiency Demand Sent','BK Filed','341 Meeting','Proof of Claim Filed','Stay Relief Filed','Stay Relief Granted','Plan Confirmed','BK Discharged','BK Dismissed','Probate Filed','Letters Testamentary Issued','Letters of Administration Issued','Administrator Appointed','Executor Appointed','Inventory Filed','Notice to Creditors Published','Claims Bar Date','Secured Claim Filed','Unsecured Claim Filed','Estate Closed','Probate Dismissed'];
+
+const SYSTEM = `You are a legal case management assistant for a Texas collections law firm (manufactured home chattel paper, foreclosures, bankruptcy).
+
+Categorize each journal entry using ONLY these exact category names:
+${CATEGORIES.join(', ')}
+
+Key rules:
+- "General" = truly miscellaneous, no specific milestone. Use sparingly.
+- "Case Update" = status calls, emails, follow-ups with no specific milestone
+- "NOD Sent" = Notice of Default & Intent to Accelerate mailed
+- "Demand Letter Sent" = 30-day demand letter (often says "deadline to receive payment")
+- "LAR Received" = received legal action request, opened file, conflict check
+- "Suit Filed" = petition filed with court
+- "Service Requested" = citation requested or process server engaged
+- "Service Accomplished" = defendant served
+- "Answer Filed" = defendant filed an answer
+- "Default Judgment Entered" = default judgment signed
+- "Final Judgment Entered" = final judgment entered
+- "Writ Issued" = writ of possession issued by court
+- "BK Filed" = debtor filed bankruptcy
+- "Foreclosure Date" = foreclosure scheduled
+- "Foreclosure Posted" = foreclosure notice posted/published
+
+Respond with ONLY a JSON array. Each item: {"id":"...","category":"exact category name","confidence":"high|med|low","reason":"one sentence"}
+"high" = unambiguous. "med" = likely. "low" = uncertain.`;
+
+let results = [];
+let apiErrorCount = 0;
+
+function log(msg) {
+  const el = document.getElementById('log');
+  el.textContent += msg + '\n';
+  el.scrollTop = el.scrollHeight;
+}
+
+async function loadAndAnalyze() {
+  document.getElementById('load-btn').disabled = true;
+  document.getElementById('load-btn').textContent = 'Running…';
+  document.getElementById('progress-wrap').style.display = '';
+  document.getElementById('stats').style.display = 'flex';
+  document.getElementById('api-error').style.display = 'none';
+  apiErrorCount = 0;
+  results = [];
+
+  log('Connecting to Supabase…');
+
+  // First test the API works with a single entry
+  log('Testing Anthropic API connection…');
+  try {
+    const testResp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 50,
+        messages: [{ role: 'user', content: 'Reply with just: {"ok":true}' }]
+      })
+    });
+    if (!testResp.ok) {
+      const err = await testResp.text();
+      throw new Error(`API returned ${testResp.status}: ${err.slice(0,200)}`);
+    }
+    log('✓ API connection OK');
+  } catch(e) {
+    document.getElementById('api-error').style.display = '';
+    document.getElementById('api-error').innerHTML = `<strong>Anthropic API connection failed.</strong><br>${e.message}<br><br>This tool must be opened directly in a browser (not inside an iframe). Try saving the file and opening it with File → Open in Chrome/Edge.`;
+    document.getElementById('load-btn').disabled = false;
+    document.getElementById('load-btn').textContent = 'Retry';
+    return;
+  }
+
+  // Load entries
+  log('Loading General entries from database…');
+  let allEntries = [];
+  let offset = 0;
+  while (true) {
+    const { data, error } = await db.from('journal_entries')
+      .select('id, entry_date, status_note, matter_id, matters(debtor_name, our_file_no)')
+      .eq('category', 'General')
+      .not('status_note', 'is', null)
+      .neq('status_note', '')
+      .order('entry_date', { ascending: false })
+      .range(offset, offset + 999);
+    if (error) { log('DB error: ' + error.message); break; }
+    if (!data || !data.length) break;
+    allEntries = allEntries.concat(data);
+    if (data.length < 1000) break;
+    offset += 1000;
+  }
+
+  document.getElementById('stat-total').textContent = allEntries.length;
+  log(`Loaded ${allEntries.length} entries. Processing in batches of 25…`);
+
+  const BATCH = 25;
+  let analyzed = 0, highCount = 0, changedCount = 0;
+
+  for (let i = 0; i < allEntries.length; i += BATCH) {
+    const batch = allEntries.slice(i, i + BATCH);
+    const bNum = Math.floor(i/BATCH)+1, bTotal = Math.ceil(allEntries.length/BATCH);
+    log(`Batch ${bNum}/${bTotal}…`);
+
+    const payload = batch.map(e => ({ id: e.id, note: (e.status_note||'').slice(0,300) }));
+    let suggestions = [];
+
+    try {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 2000,
+          system: SYSTEM,
+          messages: [{ role: 'user', content: JSON.stringify(payload) }]
+        })
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+      if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+      const text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+      const m = text.match(/\[[\s\S]*\]/);
+      if (m) suggestions = JSON.parse(m[0]);
+      log(`  ✓ ${suggestions.length} categorized`);
+    } catch(e) {
+      log(`  ✗ API error: ${e.message}`);
+      apiErrorCount += batch.length;
+      document.getElementById('stat-errors').textContent = apiErrorCount;
+    }
+
+    const sugMap = {};
+    for (const s of suggestions) sugMap[s.id] = s;
+
+    for (const entry of batch) {
+      const s = sugMap[entry.id];
+      const suggested = s ? (CATEGORIES.includes(s.category) ? s.category : 'General') : null;
+      const confidence = s ? (s.confidence || 'low') : 'error';
+      const reason = s ? (s.reason || '—') : 'API error — no suggestion';
+      results.push({ entry, suggested, confidence, reason, status: 'pending', editedCat: suggested || 'General' });
+      if (confidence === 'high') highCount++;
+      if (suggested && suggested !== 'General') changedCount++;
+      analyzed++;
+    }
+
+    document.getElementById('stat-analyzed').textContent = analyzed;
+    document.getElementById('stat-high').textContent = highCount;
+    document.getElementById('stat-changed').textContent = changedCount;
+    document.getElementById('stat-errors').textContent = apiErrorCount;
+    document.getElementById('progress-fill').style.width = Math.round(analyzed/allEntries.length*100) + '%';
+
+    if (i + BATCH < allEntries.length) await new Promise(r => setTimeout(r, 400));
+  }
+
+  log(`\n✓ Complete. ${changedCount} entries suggested for recategorization. ${apiErrorCount} API errors.`);
+  document.getElementById('load-btn').textContent = '✓ Done';
+
+  // Populate category filter with suggested values
+  const cats = [...new Set(results.map(r=>r.suggested).filter(Boolean))].sort();
+  const catSel = document.getElementById('filter-cat');
+  catSel.innerHTML = '<option value="">Any</option>' + cats.map(c=>`<option>${esc(c)}</option>`).join('');
+
+  // Default to "changed" if there are changes, otherwise "all"
+  document.getElementById('filter-conf').value = changedCount > 0 ? 'changed' : 'all';
+
+  document.getElementById('step2-card').style.display = '';
+  renderReview();
+}
+
+function renderReview() {
+  const confFilter = document.getElementById('filter-conf').value;
+  const catFilter  = document.getElementById('filter-cat').value;
+
+  let visible = results.filter(r => {
+    if (catFilter && r.suggested !== catFilter) return false;
+    if (confFilter === 'changed')  return r.suggested && r.suggested !== 'General';
+    if (confFilter === 'high')     return r.confidence === 'high';
+    if (confFilter === 'med')      return r.confidence === 'med';
+    if (confFilter === 'low')      return r.confidence === 'low';
+    if (confFilter === 'error')    return r.confidence === 'error';
+    if (confFilter === 'approved') return r.status === 'approved';
+    return true; // 'all'
+  });
+
+  const approvedCount = results.filter(r => r.status === 'approved' && r.editedCat !== 'General').length;
+  document.getElementById('review-count').textContent =
+    `Showing ${visible.length} of ${results.length} · ${approvedCount} approved for save`;
+  document.getElementById('save-btn').disabled = approvedCount === 0;
+
+  if (!visible.length) {
+    const total = results.length;
+    document.getElementById('review-container').innerHTML =
+      `<div class="empty">No entries match this filter.<br><br>
+       ${total > 0 ? `<strong>${total} entries loaded.</strong> Try switching to "All entries" in the Show dropdown.` : 'No results yet — run the analysis first.'}</div>`;
+    return;
+  }
+
+  document.getElementById('review-container').innerHTML = `
+    <table class="review-table">
+      <thead><tr>
+        <th style="width:32px;">✓</th>
+        <th style="width:88px;">Date</th>
+        <th style="width:140px;">Case</th>
+        <th>Note</th>
+        <th style="width:195px;">Category</th>
+        <th style="width:65px;">Conf.</th>
+      </tr></thead>
+      <tbody>
+      ${visible.map(r => {
+        const gi = results.indexOf(r);
+        const cc = r.confidence === 'high' ? 'conf-high' : r.confidence === 'med' ? 'conf-med' : r.confidence === 'error' ? 'conf-err' : 'conf-low';
+        return `<tr class="${r.status==='approved'?'approved':''}">
+          <td><input type="checkbox" ${r.status==='approved'?'checked':''} onchange="toggleApprove(${gi},this.checked)" /></td>
+          <td class="matter-lbl">${esc(r.entry.entry_date||'')}</td>
+          <td>
+            <div style="font-weight:500;font-size:11px;">${esc(r.entry.matters?.debtor_name||'—')}</div>
+            <div class="matter-lbl">${esc(r.entry.matters?.our_file_no||'')}</div>
+          </td>
+          <td>
+            <div class="note-text">${esc((r.entry.status_note||'').slice(0,220))}${(r.entry.status_note||'').length>220?'…':''}</div>
+            <div style="font-size:10px;color:#aaa;margin-top:3px;font-style:italic;">${esc(r.reason)}</div>
+          </td>
+          <td>
+            <select class="cat-select" onchange="results[${gi}].editedCat=this.value;renderReview();">
+              ${CATEGORIES.map(c=>`<option ${r.editedCat===c?'selected':''}>${esc(c)}</option>`).join('')}
+            </select>
+          </td>
+          <td><span class="confidence ${cc}">${r.confidence}</span></td>
+        </tr>`;
+      }).join('')}
+      </tbody>
+    </table>`;
+}
+
+function toggleApprove(idx, checked) {
+  results[idx].status = checked ? 'approved' : 'pending';
+  renderReview();
+}
+
+function approveFiltered() {
+  const confFilter = document.getElementById('filter-conf').value;
+  const catFilter  = document.getElementById('filter-cat').value;
+  results.forEach((r, gi) => {
+    if (catFilter && r.suggested !== catFilter) return;
+    if (confFilter === 'changed' && (!r.suggested || r.suggested === 'General')) return;
+    if (confFilter === 'high' && r.confidence !== 'high') return;
+    if (confFilter === 'med'  && r.confidence !== 'med')  return;
+    if (confFilter === 'low'  && r.confidence !== 'low')  return;
+    if (confFilter === 'error') return; // don't auto-approve errors
+    if (r.confidence === 'error') return; // never auto-approve errors
+    r.status = 'approved';
+  });
+  renderReview();
+}
+
+function approveAll(level) {
+  results.forEach(r => {
+    if (r.confidence === 'error') return;
+    if (level === 'high' && r.confidence !== 'high') return;
+    r.status = 'approved';
+  });
+  renderReview();
+}
+
+function unapproveAll() {
+  results.forEach(r => r.status = 'pending');
+  renderReview();
+}
+
+async function saveApproved() {
+  const toSave = results.filter(r => r.status === 'approved' && r.editedCat && r.editedCat !== 'General');
+  if (!toSave.length) { alert('No approved non-General changes to save.'); return; }
+  if (!confirm(`Save ${toSave.length} category updates to the database? This cannot be undone easily.`)) return;
+
+  document.getElementById('save-btn').disabled = true;
+  document.getElementById('save-btn').textContent = 'Saving…';
+
+  let saved = 0, failed = 0;
+  for (const r of toSave) {
+    const { error } = await db.from('journal_entries').update({ category: r.editedCat }).eq('id', r.entry.id);
+    if (error) { failed++; console.error(r.entry.id, error); }
+    else { saved++; r.status = 'saved'; }
+    if (saved % 50 === 0) document.getElementById('save-btn').textContent = `Saving… ${saved}`;
+  }
+
+  document.getElementById('save-btn').textContent = `✓ Saved ${saved}`;
+  alert(`✓ Saved ${saved} updates.${failed ? '\n⚠ '+failed+' failed — check browser console.' : ''}`);
+  renderReview();
+}
+
+function exportCSV() {
+  const rows = [['ID','Date','Case','FileNo','Note (truncated)','Suggested','Edited To','Confidence','Status']];
+  for (const r of results) {
+    rows.push([r.entry.id, r.entry.entry_date, r.entry.matters?.debtor_name||'', r.entry.matters?.our_file_no||'',
+      (r.entry.status_note||'').slice(0,300).replace(/"/g,'""'),
+      r.suggested||'', r.editedCat||'', r.confidence, r.status]);
+  }
+  const csv = rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})),
+    download: 'journal_categories_'+new Date().toISOString().slice(0,10)+'.csv'
+  });
+  a.click();
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>

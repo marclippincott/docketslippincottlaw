@@ -1,0 +1,1125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lippincott Law — Case Docket</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --ink: #1a1612;
+  --paper: #f5f0e8;
+  --cream: #ede8dc;
+  --rule: #c8bfaa;
+  --accent: #8b2500;
+  --accent-light: #c4400a;
+  --gold: #b08c3a;
+  --muted: #6b6254;
+  --success: #2d6a3f;
+  --warn: #7a5200;
+  --danger: #8b2500;
+  --info: #1a4a6b;
+  --font-serif: 'Libre Baskerville', Georgia, serif;
+  --font-mono: 'DM Mono', monospace;
+  --font-sans: 'DM Sans', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 14px; }
+body {
+  font-family: var(--font-sans);
+  background: var(--paper);
+  color: var(--ink);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── AUTH SCREEN ── */
+#auth-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ink);
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.04) 39px, rgba(255,255,255,0.04) 40px),
+    repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.04) 39px, rgba(255,255,255,0.04) 40px);
+}
+.auth-box {
+  background: var(--paper);
+  width: 380px;
+  padding: 48px 40px 40px;
+  border-top: 4px solid var(--accent);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.auth-logo {
+  font-family: var(--font-serif);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+.auth-title {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ink);
+  margin-bottom: 32px;
+}
+.auth-field { margin-bottom: 16px; }
+.auth-field label {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.auth-field input {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--rule);
+  background: white;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.auth-field input:focus { border-color: var(--accent); }
+.auth-btn {
+  width: 100%;
+  height: 44px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background 0.15s;
+}
+.auth-btn:hover { background: var(--accent-light); }
+.auth-error {
+  font-size: 12px;
+  color: var(--danger);
+  margin-top: 10px;
+  display: none;
+}
+
+/* ── APP SHELL ── */
+#app { display: none; flex-direction: column; min-height: 100vh; }
+.topbar {
+  background: var(--ink);
+  border-bottom: 3px solid var(--accent);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  height: 52px;
+  gap: 24px;
+  flex-shrink: 0;
+}
+.topbar-brand {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--paper);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.topbar-brand span {
+  color: var(--gold);
+  font-style: italic;
+}
+.topbar-nav { display: flex; gap: 2px; flex: 1; }
+.nav-btn {
+  height: 52px;
+  padding: 0 14px;
+  background: none;
+  border: none;
+  color: rgba(245,240,232,0.55);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: color 0.15s;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -3px;
+}
+.nav-btn:hover { color: var(--paper); }
+.nav-btn.active { color: var(--paper); border-bottom-color: var(--accent); }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.topbar-search {
+  height: 30px;
+  padding: 0 10px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: var(--paper);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  width: 200px;
+  outline: none;
+}
+.topbar-search::placeholder { color: rgba(245,240,232,0.35); }
+.topbar-search:focus { border-color: rgba(255,255,255,0.3); }
+.user-pill {
+  font-size: 11px;
+  color: rgba(245,240,232,0.5);
+  letter-spacing: 0.04em;
+}
+.signout-btn {
+  height: 28px;
+  padding: 0 10px;
+  background: rgba(139,37,0,0.3);
+  border: 1px solid rgba(139,37,0,0.5);
+  color: rgba(245,240,232,0.7);
+  font-size: 11px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: background 0.15s;
+}
+.signout-btn:hover { background: rgba(139,37,0,0.5); }
+
+/* ── MAIN CONTENT ── */
+.main { display: flex; flex: 1; overflow: hidden; }
+.sidebar {
+  width: 200px;
+  background: var(--cream);
+  border-right: 1px solid var(--rule);
+  padding: 16px 0;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+.sidebar-section { margin-bottom: 20px; }
+.sidebar-label {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 16px;
+  margin-bottom: 6px;
+}
+.client-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--ink);
+  border-left: 2px solid transparent;
+  transition: all 0.1s;
+}
+.client-item:hover { background: rgba(0,0,0,0.04); }
+.client-item.active { background: rgba(139,37,0,0.06); border-left-color: var(--accent); color: var(--accent); font-weight: 500; }
+.client-count {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--muted);
+  background: rgba(0,0,0,0.07);
+  padding: 1px 5px;
+}
+
+.content { flex: 1; overflow-y: auto; padding: 20px 24px; }
+
+/* ── SECTION VISIBILITY ── */
+.section { display: none; }
+.section.active { display: block; }
+
+/* ── STATS ROW ── */
+.stats-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 12px; margin-bottom: 20px; }
+.stat-card {
+  background: white;
+  border: 1px solid var(--rule);
+  padding: 14px 16px;
+  border-top: 3px solid var(--rule);
+}
+.stat-card.red { border-top-color: var(--danger); }
+.stat-card.amber { border-top-color: var(--gold); }
+.stat-card.blue { border-top-color: var(--info); }
+.stat-card.green { border-top-color: var(--success); }
+.stat-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.stat-value { font-family: var(--font-serif); font-size: 28px; font-weight: 700; line-height: 1; }
+.stat-card.red .stat-value { color: var(--danger); }
+.stat-card.amber .stat-value { color: var(--gold); }
+.stat-card.blue .stat-value { color: var(--info); }
+.stat-card.green .stat-value { color: var(--success); }
+
+/* ── CARDS ── */
+.card {
+  background: white;
+  border: 1px solid var(--rule);
+  margin-bottom: 16px;
+}
+.card-head {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--cream);
+}
+.card-head h2 { font-family: var(--font-serif); font-size: 13px; font-weight: 700; color: var(--ink); }
+.card-head span { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+
+/* ── TABLE ── */
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th {
+  padding: 7px 12px;
+  text-align: left;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--cream);
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+  font-family: var(--font-sans);
+  font-weight: 500;
+}
+td {
+  padding: 9px 12px;
+  border-bottom: 1px solid rgba(200,191,170,0.4);
+  vertical-align: middle;
+}
+tr:last-child td { border-bottom: none; }
+tr.clickable { cursor: pointer; }
+tr.clickable:hover td { background: rgba(139,37,0,0.03); }
+
+/* ── BADGES ── */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  font-weight: 500;
+  text-transform: uppercase;
+  font-family: var(--font-sans);
+}
+.badge-active { background: rgba(45,106,63,0.1); color: var(--success); }
+.badge-hold { background: rgba(176,140,58,0.12); color: var(--warn); }
+.badge-bk { background: rgba(139,37,0,0.1); color: var(--danger); }
+.badge-closed { background: rgba(107,98,84,0.1); color: var(--muted); }
+.badge-foreclosure { background: rgba(26,74,107,0.1); color: var(--info); }
+.badge-dismissed { background: rgba(107,98,84,0.1); color: var(--muted); }
+
+/* ── FILTER BAR ── */
+.filter-bar {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: rgba(245,240,232,0.5);
+}
+.filter-bar select, .filter-bar input {
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--rule);
+  background: white;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--ink);
+  outline: none;
+}
+.filter-bar select:focus, .filter-bar input:focus { border-color: var(--accent); }
+
+/* ── BUTTONS ── */
+.btn {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--rule);
+  background: white;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--ink);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.12s;
+}
+.btn:hover { background: var(--cream); }
+.btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+.btn-primary:hover { background: var(--accent-light); border-color: var(--accent-light); }
+.btn-sm { height: 24px; padding: 0 8px; font-size: 10px; }
+
+/* ── MATTER DETAIL ── */
+.detail-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--cream);
+}
+.detail-name { font-family: var(--font-serif); font-size: 20px; font-weight: 700; }
+.detail-meta { font-size: 11px; color: var(--muted); margin-top: 4px; font-family: var(--font-mono); }
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--rule); }
+.detail-col { padding: 14px 16px; }
+.detail-col:first-child { border-right: 1px solid var(--rule); }
+.field-row { display: flex; gap: 8px; margin-bottom: 8px; font-size: 12px; align-items: baseline; }
+.field-label { color: var(--muted); min-width: 110px; flex-shrink: 0; font-size: 11px; }
+.field-value { color: var(--ink); }
+.journal-entry {
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(200,191,170,0.4);
+  display: flex;
+  gap: 12px;
+}
+.journal-entry:last-child { border-bottom: none; }
+.j-num { font-family: var(--font-mono); font-size: 10px; color: var(--rule); min-width: 24px; padding-top: 2px; }
+.j-date { font-family: var(--font-mono); font-size: 11px; color: var(--muted); min-width: 76px; padding-top: 2px; }
+.j-by { font-family: var(--font-mono); font-size: 11px; font-weight: 500; color: var(--accent); min-width: 32px; padding-top: 2px; }
+.j-note { font-size: 12px; line-height: 1.55; flex: 1; color: var(--ink); }
+
+/* ── DEADLINES ── */
+.deadline-row {
+  display: flex;
+  gap: 12px;
+  padding: 9px 16px;
+  border-bottom: 1px solid rgba(200,191,170,0.4);
+  font-size: 12px;
+  align-items: center;
+}
+.deadline-row:last-child { border-bottom: none; }
+.dl-date { font-family: var(--font-mono); font-size: 11px; min-width: 88px; }
+.dl-date.overdue { color: var(--danger); font-weight: 500; }
+.dl-date.soon { color: var(--warn); font-weight: 500; }
+.dl-matter { font-weight: 500; flex: 1; }
+.dl-desc { flex: 2; color: var(--muted); }
+.dl-type {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  background: rgba(26,74,107,0.08);
+  color: var(--info);
+  padding: 2px 6px;
+  letter-spacing: 0.04em;
+}
+
+/* ── MODAL ── */
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(26,22,18,0.6); z-index: 200; align-items: center; justify-content: center; }
+.modal-bg.open { display: flex; }
+.modal { background: var(--paper); width: 480px; max-height: 85vh; overflow-y: auto; border-top: 3px solid var(--accent); box-shadow: 0 24px 60px rgba(0,0,0,0.4); }
+.modal-head { padding: 16px 18px; border-bottom: 1px solid var(--rule); display: flex; justify-content: space-between; align-items: center; background: var(--cream); }
+.modal-head h3 { font-family: var(--font-serif); font-size: 15px; font-weight: 700; }
+.modal-body { padding: 18px; }
+.modal-foot { padding: 12px 18px; border-top: 1px solid var(--rule); display: flex; justify-content: flex-end; gap: 8px; background: var(--cream); }
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--rule);
+  background: white;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--ink);
+  outline: none;
+}
+.form-group textarea { height: 80px; padding: 8px 10px; resize: vertical; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 12px 18px;
+  font-size: 12px;
+  font-family: var(--font-sans);
+  border-left: 3px solid var(--success);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  z-index: 300;
+  display: none;
+  max-width: 320px;
+}
+.toast.show { display: block; }
+.toast.error { border-left-color: var(--danger); }
+
+/* ── LOADING ── */
+.loading { padding: 40px; text-align: center; color: var(--muted); font-size: 13px; font-style: italic; font-family: var(--font-serif); }
+.empty { padding: 32px; text-align: center; color: var(--muted); font-size: 12px; }
+
+/* ── BACK BTN ── */
+.back-bar { padding: 10px 0; display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+
+/* ── IMPORT ── */
+.import-zone {
+  border: 1.5px dashed var(--rule);
+  padding: 36px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.12s;
+  margin-bottom: 16px;
+}
+.import-zone:hover { background: var(--cream); }
+.import-zone p { font-size: 13px; color: var(--muted); margin-top: 8px; }
+.import-zone .sub { font-size: 11px; color: var(--rule); margin-top: 4px; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--cream); }
+::-webkit-scrollbar-thumb { background: var(--rule); }
+
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">The Lippincott Law Firm, PLLC</div>
+    <div class="auth-title">Case Docket<br>System</div>
+    <div class="auth-field">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="your@email.com" autocomplete="email" />
+    </div>
+    <div class="auth-field">
+      <label>Password</label>
+      <input type="password" id="login-pw" placeholder="••••••••" autocomplete="current-password" />
+    </div>
+    <button class="auth-btn" onclick="signIn()">Sign in</button>
+    <div class="auth-error" id="auth-error"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-brand">Lippincott <span>Docket</span></div>
+    <nav class="topbar-nav">
+      <button class="nav-btn active" onclick="showSection('dashboard')">Dashboard</button>
+      <button class="nav-btn" onclick="showSection('matters')">Matters</button>
+      <button class="nav-btn" onclick="showSection('deadlines')">Deadlines</button>
+      <button class="nav-btn" onclick="showSection('import')">Import</button>
+    </nav>
+    <div class="topbar-right">
+      <input class="topbar-search" type="text" placeholder="Search matters…" id="global-search" oninput="handleSearch(this.value)" />
+      <span class="user-pill" id="user-pill">—</span>
+      <button class="signout-btn" onclick="signOut()">Sign out</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-label">Clients</div>
+        <div class="client-item active" data-client="all" onclick="filterClient(this,'all')">
+          All clients <span class="client-count" id="cnt-all">0</span>
+        </div>
+        <div class="client-item" data-client="TRIAD" onclick="filterClient(this,'TRIAD')">
+          Triad Financial <span class="client-count" id="cnt-TRIAD">0</span>
+        </div>
+        <div class="client-item" data-client="TRANSPECOS" onclick="filterClient(this,'TRANSPECOS')">
+          TransPecos Bank <span class="client-count" id="cnt-TRANSPECOS">0</span>
+        </div>
+        <div class="client-item" data-client="HH_CONCRETE" onclick="filterClient(this,'HH_CONCRETE')">
+          H&amp;H Concrete <span class="client-count" id="cnt-HH_CONCRETE">0</span>
+        </div>
+        <div class="client-item" data-client="HH_TILE" onclick="filterClient(this,'HH_TILE')">
+          H&amp;H Tile <span class="client-count" id="cnt-HH_TILE">0</span>
+        </div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Status</div>
+        <div class="client-item" data-status="Active" onclick="filterStatus(this,'Active')">Active</div>
+        <div class="client-item" data-status="Hold Legal" onclick="filterStatus(this,'Hold Legal')">Hold Legal</div>
+        <div class="client-item" data-status="Bankruptcy" onclick="filterStatus(this,'Bankruptcy')">Bankruptcy</div>
+        <div class="client-item" data-status="Foreclosure" onclick="filterStatus(this,'Foreclosure')">Foreclosure</div>
+        <div class="client-item" data-status="Closed" onclick="filterStatus(this,'Closed')">Closed</div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div class="section active" id="section-dashboard">
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">Active matters</div><div class="stat-value" id="s-active">—</div></div>
+          <div class="stat-card red"><div class="stat-label">Hold legal</div><div class="stat-value" id="s-hold">—</div></div>
+          <div class="stat-card amber"><div class="stat-label">Deadlines this week</div><div class="stat-value" id="s-deadlines">—</div></div>
+          <div class="stat-card blue"><div class="stat-label">Bankruptcy</div><div class="stat-value" id="s-bk">—</div></div>
+          <div class="stat-card green"><div class="stat-label">Total matters</div><div class="stat-value" id="s-total">—</div></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Recent activity</h2><span>Last 10 actions</span></div>
+          <div id="recent-list"><div class="loading">Loading…</div></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Upcoming deadlines</h2><span>Next 30 days</span></div>
+          <div id="dash-deadlines"><div class="loading">Loading…</div></div>
+        </div>
+      </div>
+
+      <!-- MATTERS -->
+      <div class="section" id="section-matters">
+        <div class="card">
+          <div class="card-head">
+            <h2 id="matters-heading">All matters</h2>
+            <button class="btn btn-primary" onclick="openNewMatter()">+ New matter</button>
+          </div>
+          <div class="filter-bar">
+            <select id="f-status" onchange="renderMatters()"><option value="">All statuses</option><option>Active</option><option>Hold Legal</option><option>Bankruptcy</option><option>Foreclosure</option><option>Closed</option><option>Dismissed</option></select>
+            <select id="f-rep" onchange="renderMatters()"><option value="">All reps</option><option>Shelar</option><option>Bigelow</option><option>Davis</option><option>Hickson</option><option>Towns</option><option>McDonald</option><option>Campbell</option></select>
+            <select id="f-type" onchange="renderMatters()"><option value="">All property types</option><option>Chattel</option><option>Land Home</option><option>Land Plus</option><option>Real Property</option></select>
+          </div>
+          <table>
+            <thead><tr><th>File #</th><th>Debtor</th><th>Client</th><th>Rep</th><th>Status</th><th>Last action</th><th>Summary</th></tr></thead>
+            <tbody id="matters-tbody"><tr><td colspan="7" class="loading">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- MATTER DETAIL -->
+      <div class="section" id="section-detail">
+        <div class="back-bar">
+          <button class="btn" onclick="showSection('matters')">← Back to matters</button>
+          <button class="btn btn-primary" onclick="openNewEntry()">+ Add entry</button>
+        </div>
+        <div class="card" id="detail-card">
+          <div class="loading">Loading…</div>
+        </div>
+      </div>
+
+      <!-- DEADLINES -->
+      <div class="section" id="section-deadlines">
+        <div class="card">
+          <div class="card-head"><h2>Upcoming deadlines</h2><button class="btn btn-primary" onclick="openNewDeadline()">+ Add deadline</button></div>
+          <div id="deadlines-list"><div class="loading">Loading…</div></div>
+        </div>
+      </div>
+
+      <!-- IMPORT -->
+      <div class="section" id="section-import">
+        <div class="card">
+          <div class="card-head"><h2>Import Word document</h2></div>
+          <div style="padding:16px;">
+            <div class="import-zone" onclick="document.getElementById('word-file').click()">
+              <svg width="32" height="32" fill="none" viewBox="0 0 32 32" style="display:block;margin:0 auto;"><rect x="6" y="2" width="20" height="28" rx="2" stroke="#c8bfaa" stroke-width="1.5"/><path d="M11 12h10M11 17h7M11 22h5" stroke="#c8bfaa" stroke-width="1.5" stroke-linecap="round"/></svg>
+              <p>Click to upload monthly update .docx file</p>
+              <div class="sub">Duplicate entries are automatically detected and skipped</div>
+              <input type="file" id="word-file" accept=".docx,.doc" style="display:none" onchange="handleWordUpload(this)" />
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Import format guide</h2></div>
+          <div style="padding:14px 16px;font-size:12px;line-height:1.8;color:var(--muted);">
+            <p>Paralegals should format Word documents as follows for automatic import:</p>
+            <pre style="background:var(--cream);padding:12px;margin:10px 0;font-family:var(--font-mono);font-size:11px;border:1px solid var(--rule);overflow-x:auto;">MATTER: [Last, First]
+FILE: [1208-XXX]
+TRIAD FILE: [XXXXXX]
+CLIENT: [TRIAD / TRANSPECOS / HH_CONCRETE / HH_TILE]
+STATUS: [Active / Hold Legal / Bankruptcy / Closed]
+REP: [Shelar / Bigelow / Davis / etc.]
+
+ENTRY [MM/DD/YY] [INITIALS]: [status note]
+ENTRY [MM/DD/YY] [INITIALS]: [status note]</pre>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>Import history</h2></div>
+          <div id="import-history"><div class="loading">Loading…</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- NEW MATTER MODAL -->
+<div class="modal-bg" id="modal-matter">
+  <div class="modal">
+    <div class="modal-head"><h3>New matter</h3><button class="btn btn-sm" onclick="closeModal('modal-matter')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label>Debtor name</label><input id="m-debtor" placeholder="Last, First M." /></div>
+        <div class="form-group"><label>Client</label><select id="m-client"><option value="TRIAD">Triad Financial</option><option value="TRANSPECOS">TransPecos Bank</option><option value="HH_CONCRETE">H&H Concrete</option><option value="HH_TILE">H&H Tile</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Our file # (1208-XXX)</label><input id="m-ourfile" placeholder="1208-801" /></div>
+        <div class="form-group"><label>Client file #</label><input id="m-clientfile" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Assignor</label><input id="m-assignor" placeholder="VyStar CU" /></div>
+        <div class="form-group"><label>Rep</label><select id="m-rep"><option>Shelar</option><option>Bigelow</option><option>Davis</option><option>Hickson</option><option>Towns</option><option>McDonald</option><option>Campbell</option></select></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Property type</label><select id="m-proptype"><option>Chattel</option><option>Land Home</option><option>Land Plus</option><option>Real Property</option><option>Personal Property</option></select></div>
+        <div class="form-group"><label>Status</label><select id="m-status"><option>Active</option><option>Hold Legal</option><option>Bankruptcy</option><option>Foreclosure</option><option>Closed</option></select></div>
+      </div>
+      <div class="form-group"><label>Debtor address</label><input id="m-addr" /></div>
+      <div class="form-group"><label>MH address (if different)</label><input id="m-mhaddr" /></div>
+      <div class="form-group"><label>Client notes</label><textarea id="m-notes" placeholder="e.g. no contact, illness, unemployment…"></textarea></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('modal-matter')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveMatter()">Save matter</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEW ENTRY MODAL -->
+<div class="modal-bg" id="modal-entry">
+  <div class="modal">
+    <div class="modal-head"><h3>Add journal entry</h3><button class="btn btn-sm" onclick="closeModal('modal-entry')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label>Date</label><input type="date" id="e-date" /></div>
+        <div class="form-group"><label>Initials</label><input id="e-by" placeholder="EAC" maxlength="5" /></div>
+      </div>
+      <div class="form-group"><label>Status note</label><textarea id="e-note" placeholder="Describe action taken…" style="height:120px;"></textarea></div>
+      <div class="form-group">
+        <label>Add deadline from this entry (optional)</label>
+        <div style="display:flex;gap:8px;">
+          <input type="date" id="e-dl-date" style="flex:1;" />
+          <input id="e-dl-desc" placeholder="Deadline description" style="flex:2;height:34px;padding:0 10px;border:1px solid var(--rule);font-family:var(--font-sans);font-size:13px;outline:none;" />
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('modal-entry')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEntry()">Save entry</button>
+    </div>
+  </div>
+</div>
+
+<!-- DEADLINE MODAL -->
+<div class="modal-bg" id="modal-deadline">
+  <div class="modal">
+    <div class="modal-head"><h3>Add deadline</h3><button class="btn btn-sm" onclick="closeModal('modal-deadline')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-group"><label>Matter file # (e.g. 1208-723)</label><input id="dl-file" placeholder="1208-XXX" /></div>
+      <div class="form-row">
+        <div class="form-group"><label>Deadline date</label><input type="date" id="dl-date" /></div>
+        <div class="form-group"><label>Type</label><select id="dl-type"><option>Answer</option><option>Discovery</option><option>Hearing</option><option>Payment</option><option>Foreclosure</option><option>Judgment Final</option></select></div>
+      </div>
+      <div class="form-group"><label>Description</label><input id="dl-desc" /></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('modal-deadline')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveDeadline()">Save deadline</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPA_URL = 'https://qzwxtrijygcsjhrnxqtn.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF6d3h0cmlqeWdjc2pocm54cXRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NTA0MTksImV4cCI6MjA5MzIyNjQxOX0.MVvtoN-3eP52U7gTc2LciLMpz48OPNFCXlLXZ8xWcVM';
+const { createClient } = supabase;
+const db = createClient(SUPA_URL, SUPA_KEY);
+
+let currentUser = null;
+let allMatters = [];
+let activeClient = 'all';
+let activeStatus = '';
+let searchQuery = '';
+let currentMatterId = null;
+
+const CLIENT_LABELS = { TRIAD:'Triad Financial', TRANSPECOS:'TransPecos Bank', HH_CONCRETE:'H&H Concrete', HH_TILE:'H&H Tile' };
+
+function badgeHtml(status) {
+  const map = { Active:'badge-active', 'Hold Legal':'badge-hold', Bankruptcy:'badge-bk', Foreclosure:'badge-foreclosure', Closed:'badge-closed', Dismissed:'badge-dismissed' };
+  return `<span class="badge ${map[status]||'badge-closed'}">${status}</span>`;
+}
+
+function toast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' '+type : '');
+  setTimeout(() => t.className = 'toast', 3500);
+}
+
+async function signIn() {
+  const email = document.getElementById('login-email').value.trim();
+  const pw = document.getElementById('login-pw').value;
+  const err = document.getElementById('auth-error');
+  err.style.display = 'none';
+  const { data, error } = await db.auth.signInWithPassword({ email, password: pw });
+  if (error) { err.textContent = error.message; err.style.display = 'block'; return; }
+  currentUser = data.user;
+  startApp();
+}
+
+async function signOut() {
+  await db.auth.signOut();
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+}
+
+async function startApp() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  const email = currentUser.email || '';
+  document.getElementById('user-pill').textContent = email.split('@')[0].toUpperCase();
+  await loadMatters();
+  renderDashboard();
+}
+
+async function loadMatters() {
+  const { data, error } = await db.from('matters')
+    .select('*')
+    .order('last_action_date', { ascending: false });
+  if (!error && data) allMatters = data;
+  updateCounts();
+}
+
+function updateCounts() {
+  document.getElementById('cnt-all').textContent = allMatters.length;
+  ['TRIAD','TRANSPECOS','HH_CONCRETE','HH_TILE'].forEach(c => {
+    const el = document.getElementById('cnt-'+c);
+    if (el) el.textContent = allMatters.filter(m => m.client_id === c).length;
+  });
+}
+
+function getFiltered() {
+  return allMatters.filter(m => {
+    const matchClient = activeClient === 'all' || m.client_id === activeClient;
+    const matchStatus = !activeStatus || m.status === activeStatus;
+    const statusFilter = document.getElementById('f-status') ? document.getElementById('f-status').value : '';
+    const repFilter = document.getElementById('f-rep') ? document.getElementById('f-rep').value : '';
+    const typeFilter = document.getElementById('f-type') ? document.getElementById('f-type').value : '';
+    const matchSF = !statusFilter || m.status === statusFilter;
+    const matchRep = !repFilter || m.rep_name === repFilter;
+    const matchType = !typeFilter || m.property_type === typeFilter;
+    const q = searchQuery.toLowerCase();
+    const matchSearch = !q ||
+      (m.debtor_name||'').toLowerCase().includes(q) ||
+      (m.our_file_no||'').toLowerCase().includes(q) ||
+      (m.triad_file_no||'').includes(q);
+    return matchClient && matchStatus && matchSF && matchRep && matchType && matchSearch;
+  });
+}
+
+function renderDashboard() {
+  const active = allMatters.filter(m => m.status === 'Active').length;
+  const hold = allMatters.filter(m => m.status === 'Hold Legal').length;
+  const bk = allMatters.filter(m => m.status === 'Bankruptcy').length;
+  document.getElementById('s-active').textContent = active;
+  document.getElementById('s-hold').textContent = hold;
+  document.getElementById('s-bk').textContent = bk;
+  document.getElementById('s-total').textContent = allMatters.length;
+
+  const today = new Date();
+  const weekOut = new Date(today.getTime() + 7*86400000);
+  const todayStr = today.toISOString().split('T')[0];
+  const weekStr = weekOut.toISOString().split('T')[0];
+
+  // Load deadlines count
+  db.from('deadlines').select('id').eq('completed', false)
+    .gte('deadline_date', todayStr).lte('deadline_date', weekStr)
+    .then(({ data }) => document.getElementById('s-deadlines').textContent = data ? data.length : 0);
+
+  // Recent matters
+  const recent = allMatters.slice(0, 10);
+  document.getElementById('recent-list').innerHTML = recent.length ? `
+    <table>
+      <thead><tr><th>Date</th><th>Debtor</th><th>Client</th><th>Status</th><th>Last action</th></tr></thead>
+      <tbody>
+        ${recent.map(m => `<tr class="clickable" onclick="openDetail('${m.id}')">
+          <td style="font-family:var(--font-mono);font-size:11px;">${m.last_action_date||'—'}</td>
+          <td style="font-weight:500;">${m.debtor_name}</td>
+          <td style="font-size:11px;">${CLIENT_LABELS[m.client_id]||m.client_id}</td>
+          <td>${badgeHtml(m.status)}</td>
+          <td style="font-size:11px;color:var(--muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${m.last_action_summary||''}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>` : '<div class="empty">No matters yet</div>';
+
+  // Upcoming deadlines
+  db.from('deadlines').select('*, matters(debtor_name, our_file_no)')
+    .eq('completed', false).gte('deadline_date', todayStr)
+    .order('deadline_date').limit(8)
+    .then(({ data }) => {
+      if (!data || !data.length) { document.getElementById('dash-deadlines').innerHTML = '<div class="empty">No upcoming deadlines</div>'; return; }
+      document.getElementById('dash-deadlines').innerHTML = data.map(d => {
+        const diff = Math.ceil((new Date(d.deadline_date+'T12:00:00') - today) / 86400000);
+        const cls = diff <= 3 ? 'overdue' : diff <= 7 ? 'soon' : '';
+        const matter = d.matters;
+        return `<div class="deadline-row">
+          <span class="dl-date ${cls}">${d.deadline_date}</span>
+          <span class="dl-matter">${matter ? matter.debtor_name : '—'}</span>
+          <span class="dl-desc">${d.description}</span>
+          <span class="dl-type">${d.deadline_type||''}</span>
+        </div>`;
+      }).join('');
+    });
+}
+
+function renderMatters() {
+  const filtered = getFiltered();
+  document.getElementById('matters-heading').textContent = `${filtered.length} matter${filtered.length !== 1 ? 's' : ''}`;
+  document.getElementById('matters-tbody').innerHTML = filtered.length ?
+    filtered.map(m => `<tr class="clickable" onclick="openDetail('${m.id}')">
+      <td style="font-family:var(--font-mono);font-size:11px;">${m.our_file_no||'—'}</td>
+      <td style="font-weight:500;">${m.debtor_name}</td>
+      <td style="font-size:11px;">${CLIENT_LABELS[m.client_id]||m.client_id}</td>
+      <td style="font-size:11px;">${m.rep_name||'—'}</td>
+      <td>${badgeHtml(m.status)}</td>
+      <td style="font-family:var(--font-mono);font-size:11px;">${m.last_action_date||'—'}</td>
+      <td style="font-size:11px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${m.last_action_summary||''}</td>
+    </tr>`).join('') :
+    '<tr><td colspan="7" class="empty">No matters found</td></tr>';
+}
+
+async function openDetail(id) {
+  currentMatterId = id;
+  showSection('detail');
+  document.getElementById('detail-card').innerHTML = '<div class="loading">Loading…</div>';
+
+  const m = allMatters.find(x => x.id === id);
+  if (!m) return;
+
+  const { data: entries } = await db.from('journal_entries')
+    .select('*').eq('matter_id', id)
+    .order('entry_date').order('entry_number');
+
+  const { data: deadlines } = await db.from('deadlines')
+    .select('*').eq('matter_id', id).eq('completed', false)
+    .order('deadline_date');
+
+  document.getElementById('detail-card').innerHTML = `
+    <div class="detail-header">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div class="detail-name">${m.debtor_name}</div>
+          <div class="detail-meta">${CLIENT_LABELS[m.client_id]||m.client_id} &nbsp;·&nbsp; ${m.our_file_no||''} &nbsp;·&nbsp; Rep: ${m.rep_name||'—'}</div>
+        </div>
+        ${badgeHtml(m.status)}
+      </div>
+    </div>
+    <div class="detail-grid">
+      <div class="detail-col">
+        <div class="field-row"><span class="field-label">Our file #</span><span class="field-value" style="font-family:var(--font-mono);">${m.our_file_no||'—'}</span></div>
+        <div class="field-row"><span class="field-label">Client file #</span><span class="field-value" style="font-family:var(--font-mono);">${m.triad_file_no||'—'}</span></div>
+        <div class="field-row"><span class="field-label">Assignor</span><span class="field-value">${m.assignor||'—'}</span></div>
+        <div class="field-row"><span class="field-label">Property type</span><span class="field-value">${m.property_type||'—'}</span></div>
+        <div class="field-row"><span class="field-label">Debtor address</span><span class="field-value">${m.debtor_address||'—'}</span></div>
+        <div class="field-row"><span class="field-label">MH address</span><span class="field-value">${m.mh_address||'—'}</span></div>
+      </div>
+      <div class="detail-col">
+        <div class="field-row"><span class="field-label">Status</span><span class="field-value">${m.status}</span></div>
+        <div class="field-row"><span class="field-label">Last action</span><span class="field-value" style="font-family:var(--font-mono);">${m.last_action_date||'—'}</span></div>
+        <div class="field-row"><span class="field-label">Client notes</span><span class="field-value">${m.triad_notes||'—'}</span></div>
+        ${deadlines && deadlines.length ? `
+          <div style="margin-top:10px;border-top:1px solid var(--rule);padding-top:10px;">
+            <div class="field-label" style="margin-bottom:6px;">Open deadlines</div>
+            ${deadlines.map(d => `<div style="font-size:11px;font-family:var(--font-mono);color:var(--danger);margin-bottom:3px;">${d.deadline_date} — ${d.description}</div>`).join('')}
+          </div>` : ''}
+      </div>
+    </div>
+    <div>
+      <div class="card-head" style="background:var(--cream);"><h2>Journal entries (${entries ? entries.length : 0})</h2></div>
+      ${entries && entries.length ? entries.map(e => `
+        <div class="journal-entry">
+          <span class="j-num">#${e.entry_number||''}</span>
+          <span class="j-date">${e.entry_date}</span>
+          <span class="j-by">${e.entered_by}</span>
+          <span class="j-note">${e.status_note}</span>
+        </div>`).join('') : '<div class="empty">No journal entries yet</div>'}
+    </div>`;
+}
+
+async function renderDeadlines() {
+  const today = new Date().toISOString().split('T')[0];
+  const { data } = await db.from('deadlines')
+    .select('*, matters(debtor_name, our_file_no)')
+    .order('deadline_date').limit(100);
+
+  if (!data || !data.length) { document.getElementById('deadlines-list').innerHTML = '<div class="empty">No deadlines</div>'; return; }
+
+  const todayDt = new Date();
+  document.getElementById('deadlines-list').innerHTML = data.map(d => {
+    const diff = Math.ceil((new Date(d.deadline_date+'T12:00:00') - todayDt) / 86400000);
+    const cls = !d.completed && diff <= 3 ? 'overdue' : diff <= 7 ? 'soon' : '';
+    const m = d.matters;
+    return `<div class="deadline-row">
+      <span class="dl-date ${cls}">${d.deadline_date}${d.completed?' ✓':''}</span>
+      <span class="dl-matter">${m ? m.debtor_name : '—'} <span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">${m ? m.our_file_no : ''}</span></span>
+      <span class="dl-desc">${d.description}</span>
+      <span class="dl-type">${d.deadline_type||''}</span>
+      ${!d.completed ? `<button class="btn btn-sm" onclick="markDeadlineDone('${d.id}')">Done</button>` : ''}
+    </div>`;
+  }).join('');
+}
+
+async function markDeadlineDone(id) {
+  await db.from('deadlines').update({ completed: true, completed_date: new Date().toISOString().split('T')[0] }).eq('id', id);
+  renderDeadlines();
+  toast('Deadline marked complete');
+}
+
+async function renderImportHistory() {
+  const { data } = await db.from('import_logs').select('*').order('import_date', { ascending: false }).limit(20);
+  if (!data || !data.length) { document.getElementById('import-history').innerHTML = '<div class="empty">No imports yet</div>'; return; }
+  document.getElementById('import-history').innerHTML = `<table>
+    <thead><tr><th>Date</th><th>File</th><th>Uploaded by</th><th>New</th><th>Updated</th><th>Dup. skipped</th></tr></thead>
+    <tbody>${data.map(r => `<tr>
+      <td style="font-family:var(--font-mono);font-size:11px;">${r.import_date ? r.import_date.split('T')[0] : '—'}</td>
+      <td style="font-size:11px;">${r.source_filename||'—'}</td>
+      <td style="font-size:11px;">${r.imported_by}</td>
+      <td style="color:var(--success);font-weight:500;">${r.matters_created||0}</td>
+      <td style="color:var(--info);font-weight:500;">${r.matters_updated||0}</td>
+      <td style="color:var(--warn);font-weight:500;">${r.entries_skipped_duplicate||0}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('section-'+name).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('onclick') && b.getAttribute('onclick').includes("'"+name+"'"));
+  });
+  if (name === 'matters') renderMatters();
+  if (name === 'deadlines') renderDeadlines();
+  if (name === 'import') renderImportHistory();
+  if (name === 'dashboard') renderDashboard();
+}
+
+function filterClient(el, code) {
+  document.querySelectorAll('[data-client]').forEach(x => x.classList.remove('active'));
+  el.classList.add('active');
+  activeClient = code;
+  activeStatus = '';
+  document.querySelectorAll('[data-status]').forEach(x => x.classList.remove('active'));
+  if (document.getElementById('section-matters').classList.contains('active')) renderMatters();
+  else showSection('matters');
+}
+
+function filterStatus(el, status) {
+  document.querySelectorAll('[data-status]').forEach(x => x.classList.remove('active'));
+  el.classList.add('active');
+  activeStatus = status;
+  activeClient = 'all';
+  document.querySelectorAll('[data-client]').forEach(x => x.classList.remove('active'));
+  document.querySelector('[data-client="all"]').classList.add('active');
+  showSection('matters');
+}
+
+function handleSearch(val) {
+  searchQuery = val;
+  if (document.getElementById('section-matters').classList.contains('active')) renderMatters();
+}
+
+function openNewMatter() { document.getElementById('modal-matter').classList.add('open'); }
+function openNewEntry() {
+  document.getElementById('e-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('modal-entry').classList.add('open');
+}
+function openNewDeadline() { document.getElementById('modal-deadline').classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+async function saveMatter() {
+  const debtor = document.getElementById('m-debtor').value.trim();
+  const ourFile = document.getElementById('m-ourfile').value.trim();
+  const client = document.getElementById('m-client').value;
+  if (!debtor) { toast('Debtor name is required', 'error'); return; }
+
+  // Get client UUID
+  const { data: clients } = await db.from('clients').select('id').eq('short_code', client).single();
+  if (!clients) { toast('Client not found', 'error'); return; }
+
+  const { data, error } = await db.from('matters').insert({
+    client_id: clients.id,
+    our_file_no: ourFile,
+    triad_file_no: document.getElementById('m-clientfile').value.trim(),
+    debtor_name: debtor,
+    assignor: document.getElementById('m-assignor').value.trim(),
+    rep_name: document.getElementById('m-rep').value,
+    property_type: document.getElementById('m-proptype').value,
+    status: document.getElementById('m-status').value,
+    debtor_address: document.getElementById('m-addr').value.trim(),
+    mh_address: document.getElementById('m-mhaddr').value.trim(),
+    triad_notes: document.getElementById('m-notes').value.trim(),
+    last_action_date: new Date().toISOString().split('T')[0],
+    last_action_summary: 'File opened.',
+    opened_date: new Date().toISOString().split('T')[0]
+  }).select();
+
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  closeModal('modal-matter');
+  await loadMatters();
+  toast('Matter created: ' + debtor);
+  renderMatters();
+}
+
+async function saveEntry() {
+  const note = document.getElementById('e-note').value.trim();
+  const date = document.getElementById('e-date').value;
+  const by = document.getElementById('e-by').value.trim() || 'EAC';
+  if (!note || !date) { toast('Date and note are required', 'error'); return; }
+
+  // Count existing entries
+  const { count } = await db.from('journal_entries').select('*', { count:'exact', head:true }).eq('matter_id', currentMatterId);
+
+  const result = await db.rpc('insert_entry_if_new', {
+    p_matter_id: currentMatterId,
+    p_entry_number: (count||0) + 1,
+    p_entry_date: date,
+    p_entered_by: by,
+    p_status_note: note,
+    p_ai_source: 'manual'
+  });
+
+  if (result.data === 'duplicate') { toast('This entry already exists — skipped', 'error'); return; }
+
+  // Update matter last action
+  await db.from('matters').update({ last_action_date: date, last_action_summary: note.substring(0,80) }).eq('id', currentMatterId);
+
+  // Add deadline if provided
+  const dlDate = document.getElementById('e-dl-date').value;
+  const dlDesc = document.getElementById('e-dl-desc').value.trim();
+  if (dlDate && dlDesc) {
+    await db.from('deadlines').insert({ matter_id: currentMatterId, deadline_date: dlDate, description: dlDesc, deadline_type: 'Other' });
+  }
+
+  closeModal('modal-entry');
+  await loadMatters();
+  openDetail(currentMatterId);
+  toast('Entry saved');
+}
+
+async function saveDeadline() {
+  const file = document.getElementById('dl-file').value.trim();
+  const date = document.getElementById('dl-date').value;
+  const desc = document.getElementById('dl-desc').value.trim();
+  if (!date || !desc) { toast('Date and description required', 'error'); return; }
+
+  let matterId = currentMatterId;
+  if (file) {
+    const { data } = await db.from('matters').select('id').eq('our_file_no', file).single();
+    if (data) matterId = data.id;
+  }
+  if (!matterId) { toast('Matter not found', 'error'); return; }
+
+  await db.from('deadlines').insert({ matter_id: matterId, deadline_date: date, description: desc, deadline_type: document.getElementById('dl-type').value });
+  closeModal('modal-deadline');
+  renderDeadlines();
+  toast('Deadline saved');
+}
+
+function handleWordUpload(input) {
+  if (!input.files[0]) return;
+  toast('Upload received — AI parsing coming in next update');
+}
+
+// Check existing session on load
+db.auth.getSession().then(({ data: { session } }) => {
+  if (session) { currentUser = session.user; startApp(); }
+});
+
+// Handle Enter key on login
+document.getElementById('login-pw').addEventListener('keydown', e => { if (e.key === 'Enter') signIn(); });
+</script>
+</body>
+</html>
