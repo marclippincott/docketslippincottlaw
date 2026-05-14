@@ -2623,15 +2623,23 @@ ENTRY [MM/DD/YY] [INITIALS]: [status note]</pre>
 <div class="modal-bg" id="modal-edit-case">
   <div class="modal wide">
     <div class="modal-head"><h3>Edit case details</h3><button class="btn btn-sm" onclick="closeModal('modal-edit-case')">✕</button></div>
-    <div class="modal-body">
-      <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Edit all fields across the Overview, Loan/Borrower, and Counsel tabs. Leave a field blank to clear it.</p>
 
-      <!-- ============= OVERVIEW (Case admin) ============= -->
-      <div class="edit-section-head">Case Overview <span class="edit-section-sub">file numbers, status, rep</span></div>
-      <div class="form-row">
-        <div class="form-group"><label>Our file # (1208-XXX)</label><input id="ec-our_file_no" /></div>
-        <div class="form-group"><label>Client file #</label><input id="ec-client_file_no" /></div>
-      </div>
+    <!-- Tab bar -->
+    <div class="detail-tabs" id="ec-tabs" style="padding:0 20px;border-bottom:1px solid var(--rule);display:flex;gap:0;overflow-x:auto;">
+      <button class="case-tab active" data-ec-tab="overview"  onclick="switchEcTab('overview')" >Case Overview</button>
+      <button class="case-tab"        data-ec-tab="debtors"   onclick="switchEcTab('debtors')"  >Debtors</button>
+      <button class="case-tab"        data-ec-tab="loan"      onclick="switchEcTab('loan')"     >Loan &amp; Home</button>
+    </div>
+
+    <div class="modal-body" style="padding-top:16px;">
+
+      <!-- ============= TAB: CASE OVERVIEW ============= -->
+      <div id="ec-tab-overview" class="ec-tab-panel">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">File numbers, status, rep, addresses, and notes. Leave a field blank to clear it.</p>
+        <div class="form-row">
+          <div class="form-group"><label>Our file # (1208-XXX) <span style="color:var(--danger);">*</span></label><input id="ec-our_file_no" /></div>
+          <div class="form-group"><label>Client file #</label><input id="ec-client_file_no" /></div>
+        </div>
       <div class="form-row">
         <div class="form-group"><label>Assignor</label><input id="ec-assignor" placeholder="VyStar CU" /></div>
         <div class="form-group"><label>Rep</label><select id="ec-rep_name" data-rep-select data-rep-blank="none" onchange="handleRepSelectChange(this);"></select></div>
@@ -2647,8 +2655,12 @@ ENTRY [MM/DD/YY] [INITIALS]: [status note]</pre>
       <div class="form-group"><label>MH (property) address</label><input id="ec-mh_address" /></div>
       <div class="form-group"><label>Client notes</label><textarea id="ec-client_notes" placeholder="e.g. no contact, illness, unemployment…" style="height:60px;"></textarea></div>
 
-      <!-- ============= PRIMARY DEBTOR ============= -->
-      <div class="edit-section-head" style="margin-top:20px;">Primary Debtor</div>
+      </div><!-- /ec-tab-overview -->
+
+      <!-- ============= TAB: DEBTORS ============= -->
+      <div id="ec-tab-debtors" class="ec-tab-panel" style="display:none;">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Primary debtor and co-debtor information. Leave a field blank to clear it.</p>
+        <div class="edit-section-head">Primary Debtor</div>
       <div class="form-row">
         <div class="form-group"><label>First name</label><input id="ec-debtor_first_name" placeholder="John" oninput="autoUpdateDebtorDisplayName('debtor')" /></div>
         <div class="form-group"><label>Middle name / initial</label><input id="ec-debtor_middle_name" placeholder="A." oninput="autoUpdateDebtorDisplayName('debtor')" /></div>
@@ -2706,9 +2718,13 @@ ENTRY [MM/DD/YY] [INITIALS]: [status note]</pre>
         <label for="ec-co_debtor_bk" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink);">Co-debtor has filed bankruptcy</label>
       </div>
 
-      <!-- ============= LOAN / BORROWER / HOME ============= -->
-      <div class="form-row">
-        <div class="form-group"><label>Loan account #</label><input id="ec-loan_account_no" style="font-family:var(--font-mono);" /></div>
+      </div><!-- /ec-tab-debtors -->
+
+      <!-- ============= TAB: LOAN & HOME ============= -->
+      <div id="ec-tab-loan" class="ec-tab-panel" style="display:none;">
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Loan details, financial data, and manufactured home information. Leave a field blank to clear it.</p>
+        <div class="form-row">
+          <div class="form-group"><label>Loan account #</label><input id="ec-loan_account_no" style="font-family:var(--font-mono);" /></div>
         <div class="form-group"><label>Loan type</label><select id="ec-loan_type" onchange="toggleLegalDescField()"><option value="">— none —</option><option>Chattel</option><option>Land Plus</option><option>Land Home</option></select></div>
       </div>
       <div id="ec-legal-desc-wrap" style="display:none;">
@@ -2717,18 +2733,18 @@ ENTRY [MM/DD/YY] [INITIALS]: [status note]</pre>
           <textarea id="ec-legal_description" placeholder="Lot 12, Block 3, ABC Subdivision, Smith County, Texas…" style="height:90px;font-family:var(--font-mono);font-size:12px;"></textarea>
         </div>
       </div>
-      <div class="form-row">
-        <div class="form-group"><label>Date of loan</label><input type="date" id="ec-date_of_loan" /></div>
-        <div class="form-group"><label>Original AMF</label><input type="number" step="0.01" id="ec-original_amf" style="font-family:var(--font-mono);" /></div>
-      </div>
-      <div class="form-group"><label>MHP name</label><input id="ec-mhp_name" /></div>
-      <div class="form-group"><label>Reason for default</label><textarea id="ec-reason_for_default" style="height:50px;"></textarea></div>
-      <div class="form-row">
-        <div class="form-group"><label>Requested by</label><input id="ec-requested_by" /></div>
-        <div class="form-group"><label>Requested date</label><input type="date" id="ec-requested_date" /></div>
-      </div>
+        <div class="form-row">
+          <div class="form-group"><label>Date of loan</label><input type="date" id="ec-date_of_loan" /></div>
+          <div class="form-group"><label>Original AMF</label><input type="number" step="0.01" id="ec-original_amf" style="font-family:var(--font-mono);" placeholder="0.00" /></div>
+        </div>
+        <div class="form-group"><label>MHP name</label><input id="ec-mhp_name" /></div>
+        <div class="form-group"><label>Reason for default</label><textarea id="ec-reason_for_default" style="height:50px;"></textarea></div>
+        <div class="form-row">
+          <div class="form-group"><label>Requested by</label><input id="ec-requested_by" /></div>
+          <div class="form-group"><label>Requested date</label><input type="date" id="ec-requested_date" /></div>
+        </div>
 
-      <!-- Manufactured home -->
+        <!-- Manufactured home -->
       <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin:14px 0 8px;">Manufactured home</div>
       <div class="form-row">
         <div class="form-group"><label>Year</label><input type="number" id="ec-home_year" style="font-family:var(--font-mono);" /></div>
@@ -2740,7 +2756,9 @@ ENTRY [MM/DD/YY] [INITIALS]: [status note]</pre>
       </div>
       <div class="form-group"><label>Serial #</label><input id="ec-home_serial_no" style="font-family:var(--font-mono);" /></div>
 
-    </div>
+      </div><!-- /ec-tab-loan -->
+
+    </div><!-- /modal-body -->
     <div class="modal-foot">
       <button class="btn" onclick="closeModal('modal-edit-case')">Cancel</button>
       <button class="btn btn-primary" onclick="saveCaseDetails()">Save all changes</button>
@@ -10879,6 +10897,15 @@ function toggleLegalDescField() {
   if (wrap) wrap.style.display = ['Land Plus','Land Home'].includes(loanType) ? '' : 'none';
 }
 
+function switchEcTab(tab) {
+  document.querySelectorAll('#ec-tabs .case-tab').forEach(b => {
+    b.classList.toggle('active', b.dataset.ecTab === tab);
+  });
+  document.querySelectorAll('.ec-tab-panel').forEach(p => {
+    p.style.display = p.id === 'ec-tab-' + tab ? '' : 'none';
+  });
+}
+
 function openEditCaseDetails() {
   if (!currentMatterId) return;
   const m = allMatters.find(x => x.id === currentMatterId);
@@ -10924,6 +10951,7 @@ function openEditCaseDetails() {
     copyDebtorContactToCo(!!isSame);
   }
 
+  switchEcTab('overview');
   document.getElementById('modal-edit-case').classList.add('open');
 }
 
