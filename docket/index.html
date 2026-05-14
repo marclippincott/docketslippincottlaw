@@ -12333,10 +12333,81 @@ async function saveLarReview() {
         if (!state.our_file_no) throw new Error('Our File # is required — fill it in at the top of the form before saving (e.g. 1208-769)');
         if (!edited.matter.debtor_name && !edited.matter.debtor_last_name) throw new Error('Debtor name is required');
 
-        // Look up client UUID
+        // Look up client UUID first (needed for scoped duplicate checks below)
         const { data: clientRow, error: clientErr } = await db.from('clients')
           .select('id, short_code').eq('short_code', state.client_code).single();
         if (clientErr || !clientRow) throw new Error('Client "' + state.client_code + '" not found in clients table');
+
+        // ── Duplicate check: file #, debtor name, and loan account # ──────────
+        // Check all three independently — any match is a likely duplicate.
+        const debtorLastName = (edited.matter.debtor_last_name || '').trim().toLowerCase();
+        const loanAcctNo     = (edited.matter.loan_account_no  || '').trim();
+
+        // 1. Our File #
+        const { data: matchByFile } = state.our_file_no
+          ? await db.from('matters').select('id, debtor_name, our_file_no, status').eq('our_file_no', state.our_file_no).maybeSingle()
+          : { data: null };
+
+        // 2. Loan account # (within same client to avoid cross-client false positives)
+        let matchByAcct = null;
+        if (loanAcctNo && clientRow) {
+          const { data: acctRows } = await db.from('matters')
+            .select('id, debtor_name, our_file_no, status, loan_account_no')
+            .eq('client_id', clientRow.id)
+            .eq('loan_account_no', loanAcctNo)
+            .limit(1);
+          matchByAcct = acctRows && acctRows.length ? acctRows[0] : null;
+        }
+
+        // 3. Debtor last name (within same client — surname-only match, advisory only)
+        let matchByName = null;
+        if (debtorLastName && clientRow) {
+          const { data: nameRows } = await db.from('matters')
+            .select('id, debtor_name, our_file_no, status')
+            .eq('client_id', clientRow.id)
+            .ilike('debtor_name', debtorLastName + '%')
+            .limit(3);
+          // Only flag if we also do NOT already have a file-# or acct match (avoid double-warning)
+          if (nameRows && nameRows.length && !matchByFile && !matchByAcct) {
+            matchByName = nameRows;
+          }
+        }
+
+        // Build warning if any match found
+        const strongMatch = matchByFile || matchByAcct;
+        if (strongMatch || matchByName) {
+          let msg = '';
+          if (matchByFile) {
+            msg = 'A matter with file number ' + state.our_file_no + ' already exists:\n\n'
+                + '  ' + (matchByFile.debtor_name || '—') + ' (' + (matchByFile.status || '—') + ')\n\n'
+                + 'Creating a duplicate will cause problems.';
+          } else if (matchByAcct) {
+            msg = 'A matter with loan account # ' + loanAcctNo + ' already exists:\n\n'
+                + '  ' + (matchByAcct.debtor_name || '—') + ' — ' + (matchByAcct.our_file_no || 'no file #') + ' (' + (matchByAcct.status || '—') + ')\n\n'
+                + 'Creating a duplicate will cause problems.';
+          } else {
+            // Name-only match — softer warning, just advisory
+            const names = matchByName.map(m => '  ' + (m.debtor_name || '—') + ' — ' + (m.our_file_no || 'no file #')).join('\n');
+            msg = 'A matter with a similar debtor name already exists:\n\n' + names + '\n\nThis may or may not be the same person.';
+          }
+
+          const updateLabel  = strongMatch ? 'OK = Update existing matter' : 'OK = Create new matter anyway';
+          const cancelLabel  = 'Cancel = Stop';
+          const proceed = confirm(msg + '\n\n' + updateLabel + '\n' + cancelLabel);
+
+          if (strongMatch) {
+            if (proceed) {
+              state.match_matter_id = (matchByFile || matchByAcct).id;
+              await saveLarReview();
+              return;
+            } else {
+              throw new Error('Cancelled — edit the existing matter instead of creating a duplicate');
+            }
+          } else {
+            // Name-only: proceed if user confirms, stop if they cancel
+            if (!proceed) throw new Error('Cancelled — check the existing matters before proceeding');
+          }
+        }
 
         // Split "Last, First Middle" debtor_name into structured fields if not already split
         const matterData = { ...edited.matter };
