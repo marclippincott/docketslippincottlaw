@@ -6706,6 +6706,7 @@ function renderActivityList() {
 
 let _deadlinePartyFilter = 'All';
 let _deadlineClientFilter = 'All';
+let _deadlineHidePast = true;  // default: hide past deadlines
 
 async function renderDeadlines() {
   const { data } = await db.from('deadlines')
@@ -6748,12 +6749,20 @@ async function renderDeadlines() {
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
         <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;min-width:40px;">Party</span>
         ${allParties.map(p => makePill(p, _deadlinePartyFilter === p, `setDeadlinePartyFilter('${escapeHtml(p)}')`)).join('')}
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+        <span style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;min-width:40px;">Show</span>
+        ${makePill('Upcoming only', _deadlineHidePast === true,  'setDeadlineHidePast(true)')}
+        ${makePill('Include past',  _deadlineHidePast === false, 'setDeadlineHidePast(false)')}
       </div>`;
   }
 
-  // Apply both filters
+  // Apply filters
   const todayDt = new Date();
+  const todayStr2 = todayDt.toISOString().split('T')[0];
   let filtered = data;
+  if (_deadlineHidePast)
+    filtered = filtered.filter(d => d.deadline_date >= todayStr2);
   if (_deadlineClientFilter !== 'All')
     filtered = filtered.filter(d => d.matters?.clients?.short_code === _deadlineClientFilter);
   if (_deadlinePartyFilter !== 'All')
@@ -7776,6 +7785,11 @@ function setDeadlineClientFilter(client) {
 
 function setDeadlinePartyFilter(party) {
   _deadlinePartyFilter = party;
+  renderDeadlines();
+}
+
+function setDeadlineHidePast(val) {
+  _deadlineHidePast = val;
   renderDeadlines();
 }
 
@@ -11122,7 +11136,7 @@ async function saveEntry() {
       deadline_date: answerDue,
       description: descLabel,
       deadline_type: 'Answer',
-      deadline_party: defendantName || 'Defendant',
+      deadline_party: 'Defendant',
     }).select('id').single();
     if (!ansErr) {
       toast(`Answer deadline set: ${answerDue}${defendantName ? ' — ' + defendantName : ''}`, 'info');
@@ -11148,7 +11162,7 @@ async function saveEntry() {
       deadline_date: disclosureDue,
       description: theirDesc,
       deadline_type: 'Disclosures',
-      deadline_party: defendantName || 'Defendant',
+      deadline_party: 'Defendant',
     });
 
     // Our disclosures due to defendant
