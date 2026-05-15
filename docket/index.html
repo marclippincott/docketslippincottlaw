@@ -6109,6 +6109,7 @@ async function openDetail(id, opts) {
       <button class="case-tab" onclick="switchCaseTab('deadlines')" data-tab="deadlines">Deadlines<span class="tab-count">(${deadlines ? deadlines.length : 0})</span></button>
       <button class="case-tab" onclick="switchCaseTab('activity')" data-tab="activity">Activity<span class="tab-count">(${entries ? entries.length : 0})</span></button>
       <button class="case-tab" onclick="switchCaseTab('contacts')" data-tab="contacts">Contacts</button>
+      <button class="case-tab" onclick="switchCaseTab('documents')" data-tab="documents">Documents</button>
     </div>
 
     <!-- ============== OVERVIEW TAB ============== -->
@@ -6341,6 +6342,134 @@ async function openDetail(id, opts) {
       </div>
       <div id="case-contacts-list"><div class="loading" style="font-size:12px;">Loading…</div></div>
     </div>
+
+    <!-- ============== DOCUMENTS TAB ============== -->
+    <div class="case-tab-panel" id="case-tab-documents">
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;align-items:flex-start;">
+        <div style="flex:1;min-width:200px;">
+          <h3 style="margin:0 0 4px;font-size:14px;">Generate documents</h3>
+          <p style="margin:0;font-size:11px;color:var(--muted);">Merge case data into standard firm documents. Opens a print-ready PDF in a new window.</p>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">
+
+        <!-- Demand Letter -->
+        <div class="card" style="padding:14px 16px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#9993; Demand Letter</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Notice of Default &amp; Intent to Accelerate</div>
+          <div class="form-group" style="margin-bottom:8px;">
+            <label style="font-size:10px;">Past due amount <span style="color:var(--danger);">*</span></label>
+            <input id="doc-demand-pastdue" type="text" placeholder="e.g. 3,913.36" style="font-family:var(--font-mono);font-size:12px;" />
+          </div>
+          <div class="form-group" style="margin-bottom:8px;">
+            <label style="font-size:10px;">CMRR # (primary address)</label>
+            <input id="doc-demand-cmrr1" type="text" placeholder="9589 0710 5270 1412 7985 44" style="font-family:var(--font-mono);font-size:11px;" />
+          </div>
+          <div class="form-group" style="margin-bottom:8px;">
+            <label style="font-size:10px;">CMRR # (alternate address, if any)</label>
+            <input id="doc-demand-cmrr2" type="text" placeholder="optional" style="font-family:var(--font-mono);font-size:11px;" />
+          </div>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label style="font-size:10px;">Alternate address (if different from debtor address)</label>
+            <input id="doc-demand-altaddr" type="text" placeholder="e.g. P.O. Box 626, Comfort, TX 78013" style="font-size:11px;" />
+          </div>
+          <button class="btn btn-primary btn-sm" style="width:100%;" onclick="generateDocument('demand')">Generate PDF &#x2197;</button>
+        </div>
+
+        <!-- Initial Disclosures -->
+        <div class="card" style="padding:14px 16px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#128196; Initial Disclosures</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">TRCP 194 — Plaintiff&#39;s Required Disclosures</div>
+          <div class="form-group" style="margin-bottom:8px;">
+            <label style="font-size:10px;">Cause No. <span style="color:var(--danger);">*</span></label>
+            <input id="doc-disc-causeno" type="text" placeholder="e.g. 2632B" style="font-family:var(--font-mono);font-size:12px;" />
+          </div>
+          <div class="form-group" style="margin-bottom:8px;">
+            <label style="font-size:10px;">Court &amp; county <span style="color:var(--danger);">*</span></label>
+            <input id="doc-disc-court" type="text" placeholder="e.g. 198th Judicial District, Kerr County" style="font-size:11px;" />
+          </div>
+          <div class="form-group" style="margin-bottom:8px;">
+            <label style="font-size:10px;">Payoff amount (as of disclosure date)</label>
+            <input id="doc-disc-payoff" type="text" placeholder="e.g. 55,262.86" style="font-family:var(--font-mono);font-size:12px;" />
+          </div>
+          <div class="form-group" style="margin-bottom:8px;">
+            <label style="font-size:10px;">Per diem rate</label>
+            <input id="doc-disc-perdiem" type="text" placeholder="e.g. 12.72" style="font-family:var(--font-mono);font-size:12px;" />
+          </div>
+          <div class="form-group" style="margin-bottom:8px;">
+            <label style="font-size:10px;">Interest rate (% per annum)</label>
+            <input id="doc-disc-rate" type="text" placeholder="e.g. 8.75" style="font-family:var(--font-mono);font-size:12px;" />
+          </div>
+          <div class="form-group" style="margin-bottom:8px;">
+            <label style="font-size:10px;">Service date on disclosures</label>
+            <input id="doc-disc-date" type="date" style="font-size:12px;" />
+          </div>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label style="font-size:10px;">Triad witnesses (one per line)</label>
+            <textarea id="doc-disc-witnesses" style="height:54px;font-size:11px;" placeholder="Matthew Shelar&#10;Toni Sudduth&#10;Desmond Mitchell&#10;Fawn Owens"></textarea>
+          </div>
+          <button class="btn btn-primary btn-sm" style="width:100%;" onclick="generateDocument('disclosures')">Generate PDF &#x2197;</button>
+        </div>
+
+        <!-- Interrogatories -->
+        <div class="card" style="padding:14px 16px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#10067; Interrogatories (Rogs)</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Plaintiff&#39;s First Set of Interrogatories to Defendant</div>
+          <div class="form-group" style="margin-bottom:8px;">
+            <label style="font-size:10px;">Cause No. <span style="color:var(--danger);">*</span></label>
+            <input id="doc-rogs-causeno" type="text" placeholder="e.g. 2632B" style="font-family:var(--font-mono);font-size:12px;" />
+          </div>
+          <div class="form-group" style="margin-bottom:8px;">
+            <label style="font-size:10px;">Court &amp; county <span style="color:var(--danger);">*</span></label>
+            <input id="doc-rogs-court" type="text" placeholder="e.g. 198th Judicial District, Kerr County" style="font-size:11px;" />
+          </div>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label style="font-size:10px;">Service date</label>
+            <input id="doc-rogs-date" type="date" style="font-size:12px;" />
+          </div>
+          <button class="btn btn-primary btn-sm" style="width:100%;" onclick="generateDocument('rogs')">Generate PDF &#x2197;</button>
+        </div>
+
+        <!-- RFPs -->
+        <div class="card" style="padding:14px 16px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#128194; Requests for Production</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Plaintiff&#39;s First Request for Production of Documents</div>
+          <div class="form-group" style="margin-bottom:8px;">
+            <label style="font-size:10px;">Cause No. <span style="color:var(--danger);">*</span></label>
+            <input id="doc-rfp-causeno" type="text" placeholder="e.g. 2632B" style="font-family:var(--font-mono);font-size:12px;" />
+          </div>
+          <div class="form-group" style="margin-bottom:8px;">
+            <label style="font-size:10px;">Court &amp; county <span style="color:var(--danger);">*</span></label>
+            <input id="doc-rfp-court" type="text" placeholder="e.g. 198th Judicial District, Kerr County" style="font-size:11px;" />
+          </div>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label style="font-size:10px;">Service date</label>
+            <input id="doc-rfp-date" type="date" style="font-size:12px;" />
+          </div>
+          <button class="btn btn-primary btn-sm" style="width:100%;" onclick="generateDocument('rfp')">Generate PDF &#x2197;</button>
+        </div>
+
+        <!-- RFAs -->
+        <div class="card" style="padding:14px 16px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#9989; Requests for Admissions</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Plaintiff&#39;s First Request for Admissions to Defendant</div>
+          <div class="form-group" style="margin-bottom:8px;">
+            <label style="font-size:10px;">Cause No. <span style="color:var(--danger);">*</span></label>
+            <input id="doc-rfa-causeno" type="text" placeholder="e.g. 2632B" style="font-family:var(--font-mono);font-size:12px;" />
+          </div>
+          <div class="form-group" style="margin-bottom:8px;">
+            <label style="font-size:10px;">Court &amp; county <span style="color:var(--danger);">*</span></label>
+            <input id="doc-rfa-court" type="text" placeholder="e.g. 198th Judicial District, Kerr County" style="font-size:11px;" />
+          </div>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label style="font-size:10px;">Service date</label>
+            <input id="doc-rfa-date" type="date" style="font-size:12px;" />
+          </div>
+          <button class="btn btn-primary btn-sm" style="width:100%;" onclick="generateDocument('rfa')">Generate PDF &#x2197;</button>
+        </div>
+
+      </div>
+    </div>
   `;
 
   // Render activity panel contents
@@ -6350,6 +6479,394 @@ async function openDetail(id, opts) {
   if (!allContacts.length) loadAllContacts();
   renderCaseContacts(id);
 }
+
+// ── DOCUMENT GENERATION ──────────────────────────────────────────────────────
+// Merges matter data with standard firm document templates and opens a
+// print-ready HTML window. Uses actual Handley file text as the template base.
+
+function generateDocument(type) {
+  const m = allMatters.find(x => x.id === currentMatterId);
+  if (!m) { toast('No matter loaded', 'error'); return; }
+
+  // Helper: get field value or placeholder
+  const v = (val, fallback) => (val && String(val).trim()) || fallback || '_______________';
+  const fmtMoney = n => n != null ? '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2}) : '_______________';
+  const fmtDate  = d => d ? new Date(d + 'T12:00:00').toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'}) : new Date().toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'});
+  const today    = fmtDate(new Date().toISOString().split('T')[0]);
+
+  // Matter fields
+  const debtorName     = v(m.debtor_name_full || m.debtor_name);
+  const coDebtorName   = m.co_debtor_name ? (m.co_debtor_name_full || m.co_debtor_name) : null;
+  const debtorAddr     = v(m.debtor_address);
+  const mhAddr         = v(m.mh_address);
+  const fileNo         = v(m.our_file_no);
+  const clientFileNo   = v(m.client_file_no);
+  const loanDate       = m.date_of_loan ? fmtDate(m.date_of_loan) : '_______________';
+  const origAMF        = m.original_amf ? fmtMoney(m.original_amf) : '_______________';
+  const homeYear       = v(m.home_year);
+  const homeMake       = v(m.home_make);
+  const homeModel      = v(m.home_model);
+  const homeSize       = m.home_size ? '(' + m.home_size + ')' : '';
+  const homeSerial     = v(m.home_serial_no);
+  const assignor       = v(m.assignor, 'Credit Union of Texas');
+  const loanAcctNo     = v(m.loan_account_no);
+
+  // Client-specific
+  const isTriad      = (m.client_code === 'TRIAD');
+  const isTransPecos = (m.client_code === 'TRANSPECOS');
+  const clientName   = isTriad ? 'Triad Financial Services, Inc.' : isTransPecos ? 'TransPecos Bank' : v(m.client_code);
+  const clientAddr   = isTriad ? '13901 Sutton Park Drive S, Building A, Suite 300, Jacksonville, Florida 32224' : isTransPecos ? 'P.O. Box 1268, Fort Stockton, Texas 79735' : '_______________';
+  const triadContact = isTriad ? 'Matthew Shelar at Triad at (800) 522-2013 ext. 1258' : isTransPecos ? 'your loan officer' : '_______________';
+  const triadFax     = isTriad ? '(866) 874-2338' : '_______________';
+
+  // Plaintiff line (servicer format for Triad, direct for TransPecos)
+  const plaintiffLine = isTriad
+    ? `${clientName}\nas servicer for ${assignor}`
+    : clientName;
+
+  // Home description
+  const homeDesc = `${homeYear} ${homeMake} ${homeModel} ${homeSize}`.trim();
+  const collateralDesc = homeDesc.replace(/\s+/g,' ').replace(/\s\(\s*\)/,'');
+  const noteDesc = `Promissory Note and Security Agreement \u2013 Manufactured Home dated ${loanDate}, in the principal sum of ${origAMF}, executed by ${debtorName}${coDebtorName ? ' and ' + coDebtorName : ''}, and secured by the Manufactured Home`;
+  const collateralFullDesc = `${collateralDesc}, Serial Number ${homeSerial}${homeSerial !== '_______________' ? '' : ''}, together with all parts, accessories, repairs, improvements, and accessions`;
+
+  // Signature block
+  const sigBlock = `<div style="margin-top:24px;">Sincerely,</div>
+<div style="margin-top:48px;border-top:1px solid #000;width:260px;"></div>
+<div>Marc L. Lippincott</div>
+<div style="margin-top:12px;">cc:&nbsp;&nbsp;&nbsp;${clientName}</div>`;
+
+  // Letterhead
+  const letterhead = `<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;">
+  <div style="font-size:11px;line-height:1.6;">
+    11507 SUSIE ST.<br>AUSTIN, TEXAS 78704<br>(T) 512-472-2300<br>(F) 512-472-2303
+  </div>
+  <div style="text-align:right;font-size:12px;font-weight:bold;">MARC L. LIPPINCOTT</div>
+</div>`;
+
+  // FDCPA disclosure
+  const fdcpaDisclosure = `<div style="margin-top:36px;border-top:2px solid #000;padding-top:12px;">
+<p style="font-weight:bold;margin-bottom:8px;">Debt Collection Disclosures</p>
+<p>Under the Fair Debt Collection Practices Act, which is federal law, we are required to notify you of the following:</p>
+<p>1. You have thirty (30) days from the day you receive this letter to dispute all or part of the debt. If you notify us in writing that all or part of the debt is disputed, we will provide you with a verification of the debt by mail. Unless you dispute all or part of the debt in writing within this period of time, we will assume the debt is valid.</p>
+<p>2. If the creditor named above is different from the original creditor on this debt, we will provide you with the name and address of the original creditor by mail if you request this in writing within thirty (30) days from the date you receive this letter.</p>
+</div>`;
+
+  // Certificate of service block
+  const certOfService = (serviceDate, defendant, defAddr) => `<div style="page-break-before:always;">
+<p style="font-weight:bold;">CERTIFICATE OF SERVICE</p>
+<p>I certify that a true and correct copy of the above and foregoing document has been served on each attorney of record or party in accordance with the Texas Rule of Civil Procedure 21a on this ${serviceDate || today}.</p>
+<div style="margin-top:36px;border-top:1px solid #000;width:300px;"></div>
+<div>Marc L. Lippincott</div>
+<div style="margin-top:20px;display:flex;gap:24px;">
+  <div style="border:1px solid #888;width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;"></div> hand-delivery
+  &nbsp;&nbsp;
+  <div style="border:1px solid #888;width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;"></div> telecopy
+  &nbsp;&nbsp;
+  <div style="background:#333;width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;"></div> first class mail
+  &nbsp;&nbsp;
+  <div style="background:#333;width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;"></div> certified mail, return receipt requested
+</div>
+<div style="margin-top:12px;">${escapeHtml(defendant)}<br>${escapeHtml(defAddr)}<br>Defendant Pro Se</div>
+</div>`;
+
+  // Caption block for court documents
+  const caption = (causeNo, court) => {
+    const courtParts = (court || '').split(',').map(s => s.trim());
+    const courtLine  = courtParts[0] || '_____ JUDICIAL DISTRICT';
+    const countyLine = courtParts[1] ? courtParts[1].toUpperCase() : '__________ COUNTY, TEXAS';
+    return `<table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+  <tr>
+    <td style="width:50%;padding:4px 0;vertical-align:top;">
+      <div>${plaintiffLine.replace(/\n/g,'<br>')},</div>
+      <div style="margin-left:20px;">Plaintiff,</div>
+      <div style="margin-top:8px;">v.</div>
+      <div style="margin-top:8px;">${escapeHtml(debtorName)}${coDebtorName ? '<br>' + escapeHtml(coDebtorName) : ''},</div>
+      <div style="margin-left:20px;">Defendant.</div>
+    </td>
+    <td style="width:50%;padding:4px 12px;vertical-align:top;border-left:2px solid #000;">
+      <div>&#xA7;</div><div>&#xA7;</div><div>&#xA7;</div><div>&#xA7;</div><div>&#xA7;</div><div>&#xA7;</div>
+      <div style="margin-top:12px;font-weight:bold;">CAUSE NO. ${escapeHtml(causeNo || '____________')}</div>
+      <div style="margin-top:8px;">IN THE DISTRICT COURT OF</div>
+      <div style="margin-top:8px;font-weight:bold;">${escapeHtml(countyLine)}</div>
+      <div style="margin-top:8px;font-weight:bold;">${escapeHtml(courtLine)}</div>
+    </td>
+  </tr>
+</table>`;
+  };
+
+  const CSS = `
+    body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; margin: 1in; color: #000; }
+    p { margin: 0 0 12pt; }
+    h2 { font-size: 12pt; text-align: center; text-transform: uppercase; margin: 0 0 12pt; }
+    .indent { text-indent: 0.5in; }
+    @media print { body { margin: 1in; } }
+  `;
+
+  let html = '';
+
+  // ── DEMAND LETTER ───────────────────────────────────────────────────────────
+  if (type === 'demand') {
+    const pastDue  = document.getElementById('doc-demand-pastdue')?.value.trim() || '_______________';
+    const cmrr1    = document.getElementById('doc-demand-cmrr1')?.value.trim() || '';
+    const cmrr2    = document.getElementById('doc-demand-cmrr2')?.value.trim() || '';
+    const altAddr  = document.getElementById('doc-demand-altaddr')?.value.trim() || '';
+
+    if (!pastDue || pastDue === '_______________') {
+      toast('Enter the past due amount before generating', 'error'); return;
+    }
+
+    const deadline30 = (() => {
+      const d = new Date(); d.setDate(d.getDate() + 30);
+      return d.toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'});
+    })();
+
+    const addrBlock = (addr, cmrr, label) => cmrr
+      ? `<div style="flex:1;"><div style="font-weight:bold;">VIA CERTIFIED MAIL</div><div>CMRR #${escapeHtml(cmrr)}</div><div>VIA REGULAR MAIL</div><div>${escapeHtml(label)}</div><div>${escapeHtml(addr)}</div></div>`
+      : '';
+
+    const addr1block = addrBlock(debtorAddr, cmrr1, debtorName);
+    const addr2block = altAddr ? addrBlock(altAddr, cmrr2, debtorName) : (cmrr2 ? addrBlock(debtorAddr, cmrr2, debtorName) : '');
+
+    html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Demand Letter — ${escapeHtml(debtorName)}</title><style>${CSS}</style></head><body>
+${letterhead}
+<div style="margin-bottom:24px;">${today}</div>
+<div style="display:flex;gap:40px;margin-bottom:24px;">${addr1block}${addr2block}</div>
+<p><strong>Re:&nbsp;&nbsp;&nbsp;NOTICE OF DEFAULT &amp; INTENT TO ACCELERATE</strong><br>
+Creditor: ${escapeHtml(assignor)}<br>
+Servicer: ${escapeHtml(clientName)}<br>
+Contract: ${escapeHtml(noteDesc)}<br>
+Manufactured Home: ${escapeHtml(collateralFullDesc)}</p>
+<p>Dear ${debtorName.includes(',') ? 'Mr./Ms. ' + debtorName.split(',')[0].trim() : debtorName},</p>
+<p>The undersigned and this Firm represent ${escapeHtml(clientName)} as servicer for ${escapeHtml(assignor)} with respect to the above-referenced Contract and Manufactured Home.</p>
+<p>You have failed to make payments when due under the Contract, and your account is delinquent. As a result, you are in default under the terms of the Contract.</p>
+<p>As of ${today}, the past due amount owed on your account, including unpaid principal and accrued but unpaid interest, late fees and other charges authorized under the Contract, totals $${escapeHtml(pastDue)}. This amount does not include any payments which fall after ${today}, or within or after the said thirty (30) day demand period, which are and shall remain separately due. Additionally, this amount does not include collection costs you agreed to pay pursuant to the terms of the Contract. Payment of collections costs, including attorney's fees and expenses, is required to bring your account current.</p>
+<p>Accordingly, demand is hereby made for the payment of $${escapeHtml(pastDue)} plus collection costs (the "Total Amount Due") within thirty (30) days from the date of this letter.</p>
+<p>Please contact ${escapeHtml(triadContact)} to obtain information regarding collection costs and the current total amount due. Please be advised that partial payments will not be accepted, and you must contact ${escapeHtml(clientName)} to make payment arrangements.</p>
+<p>This letter constitutes formal notice to you of your default under the terms of the Contract and formal demand for immediate payment in full of the Total Amount Due. I have been instructed that, unless ${escapeHtml(clientName)} receives certified funds for the total amount due on or before thirty (30) days from the date of this letter, I am to take whatever lawful steps are necessary to protect my client's interest, including, but not limited to the filing of a lawsuit seeking a judgment for money damages and possession of the Manufactured Home. If a lawsuit is filed, you may be liable for attorney's fees, expenses, and costs of court.</p>
+<p>Furthermore, please be advised that pursuant to the terms of the Contract, upon your default, the entire unpaid principal amount of the Indebtedness may become immediately due and payable. After the expiration of the said thirty (30) day period beginning on the date of this letter, if your account is not brought current, the entire amount of the Indebtedness will be accelerated without further notice to you, and the entire unpaid principal balance, accrued but unpaid interest, late fees, and such additional authorized charges will be due in full.</p>
+<p>You are instructed to fax proof that the Manufactured Home is insured and that all taxes regarding the Manufactured Home are paid and current to ${escapeHtml(clientName)}${isTriad ? ' c/o Matthew Shelar at ' + triadFax : ''}. If payment of the Total Amount Due plus collection costs is not received by ${escapeHtml(clientName)} within thirty (30) days from the date of this letter, ${escapeHtml(clientName)} demands that you vacate and deliver possession of the Manufactured Home at its current location to ${escapeHtml(clientName)} by ${escapeHtml(deadline30)}, at 10:00 a.m., C.S.T. You are instructed to contact ${escapeHtml(clientName)} at least twenty-four (24) hours in advance.</p>
+<p>This office is attempting to collect a debt and any information obtained will be used for that purpose.</p>
+${sigBlock}
+${fdcpaDisclosure}
+<scr' + 'ipt>window.print();</scr' + 'ipt>
+</body></html>`;
+  }
+
+  // ── INITIAL DISCLOSURES ─────────────────────────────────────────────────────
+  else if (type === 'disclosures') {
+    const causeNo   = document.getElementById('doc-disc-causeno')?.value.trim() || '';
+    const court     = document.getElementById('doc-disc-court')?.value.trim() || '';
+    const payoff    = document.getElementById('doc-disc-payoff')?.value.trim() || '_______________';
+    const perDiem   = document.getElementById('doc-disc-perdiem')?.value.trim() || '_______________';
+    const rate      = document.getElementById('doc-disc-rate')?.value.trim() || '_______________';
+    const svcDateRaw= document.getElementById('doc-disc-date')?.value || '';
+    const svcDate   = svcDateRaw ? fmtDate(svcDateRaw) : today;
+    const witnessRaw= document.getElementById('doc-disc-witnesses')?.value.trim() || 'Matthew Shelar\nToni Sudduth\nDesmond Mitchell\nFawn Owens';
+    const witnesses = witnessRaw.split('\n').map(w => w.trim()).filter(Boolean);
+
+    if (!causeNo) { toast('Enter the Cause No. before generating', 'error'); return; }
+
+    html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Initial Disclosures — ${escapeHtml(debtorName)}</title><style>${CSS} h2{margin:24pt 0 12pt;}</style></head><body>
+${caption(causeNo, court)}
+<h2>PLAINTIFF'S INITIAL DISCLOSURES</h2>
+<p><strong>TO:</strong>&nbsp;&nbsp;Defendant, ${escapeHtml(debtorName)}.</p>
+<p>Pursuant to the Texas Rules of Civil Procedure, Plaintiff, ${escapeHtml(plaintiffLine.replace(/\n/g,', '))}, serves its responses to Required Initial Disclosures.</p>
+<div style="margin-top:36px;text-align:right;">
+  Respectfully submitted,<br><br>
+  The Lippincott Law Firm, PLLC<br>
+  11507 Susie St.<br>Austin, Texas 78748<br>
+  Telephone: (512) 472-2300<br>Telecopier: (512) 472-2303<br><br>
+  By: /s/ Marc L. Lippincott<br>
+  Marc L. Lippincott<br>State Bar No. 24002480<br>Marc@thelippincottlawfirm.com<br>
+  Attorney for Plaintiff
+</div>
+${certOfService(svcDate, debtorName, debtorAddr)}
+<div style="page-break-before:always;">
+<h2>RESPONSE TO INITIAL DISCLOSURE</h2>
+<p><strong>DISCLOSURE NO. 1</strong><br>Correct names and addresses of parties to the lawsuit.</p>
+<p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;${escapeHtml(plaintiffLine.replace(/\n/g,', '))}<br>${escapeHtml(clientAddr)}<br><br>${escapeHtml(debtorName)}<br>${escapeHtml(debtorAddr)}</p>
+<p><strong>DISCLOSURE NO. 2</strong><br>Potential parties to the lawsuit.</p>
+<p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;None known at this time. Plaintiff reserves the right to supplement this response.</p>
+<p><strong>DISCLOSURE NO. 3</strong><br>Legal theories and factual bases of claims or defenses.</p>
+<p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;The pleadings in this case contain the legal theories and general factual bases for claims, or defenses. Generally, Defendant executed a ${escapeHtml(noteDesc)}. Defendant defaulted in the payment of the Contract, having failed to pay the regular monthly installments when due. Defendant is thus in breach of contract.</p>
+<p><strong>DISCLOSURE NO. 4</strong><br>Amount and any method of calculating economic damages.</p>
+<p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;Plaintiff will supplement, but the amount of the economic damages include the payoff amount, prejudgment interest and attorney's fees. As of ${today}, the payoff amount is $${escapeHtml(payoff)} (exclusive of attorney's fees and expenses), prejudgment interest at the rate of ${escapeHtml(rate)}% per annum (per diem rate of $${escapeHtml(perDiem)} per day), plus future reasonable and necessary attorneys' fees and expenses.</p>
+<p><strong>DISCLOSURE NO. 5</strong><br>Persons with Knowledge of Relevant Facts (Potential Witnesses).</p>
+<p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;${escapeHtml(debtorName)} &ndash; ${escapeHtml(debtorAddr)}<br><br>
+Employees and custodians of records of ${escapeHtml(clientName)}, including but not limited to:<br>
+${witnesses.map(w => escapeHtml(w)).join('<br>')}
+<br><br>All employee contact information c/o Plaintiff's attorney of record<br><br>
+Marc Lippincott is expected to provide expert testimony as to the reasonableness and necessity of any party's attorneys' fees. Mr. Lippincott is expected to testify that the fees and expenses charged by the firm to Plaintiff as standard hourly rates are reasonable and necessary fees incurred within this case. For a current resume, refer to www.thelippincottlawfirm.com. Plaintiff reserves the right to supplement this response.</p>
+<p><strong>DISCLOSURE NO. 6</strong><br>Documents, electronic items, or tangible things relied upon to support claims.</p>
+<p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;Plaintiff will supplement, but see attached responsive documents.</p>
+<p><strong>DISCLOSURE NO. 7</strong><br>Indemnity and insuring agreements.</p>
+<p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;None known at this time. Plaintiff reserves the right to supplement this response.</p>
+<p><strong>DISCLOSURE NO. 8</strong><br>Settlement agreements.</p>
+<p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;None known at this time. Plaintiff reserves the right to supplement this response.</p>
+<p><strong>DISCLOSURE NO. 9</strong><br>Witness statements.</p>
+<p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;None known written statements at this time, other than emails and correspondence between the parties. Plaintiff reserves the right to supplement this response.</p>
+<p><strong>DISCLOSURE NO. 10</strong><br>Medical records or bills.</p>
+<p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;None applicable.</p>
+<p><strong>DISCLOSURE NO. 11</strong><br>Medical records or bills from 3rd party authorizations.</p>
+<p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;None applicable.</p>
+<p><strong>DISCLOSURE NO. 12</strong><br>Responsible 3rd parties.</p>
+<p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;None known.</p>
+</div>
+<scr' + 'ipt>window.print();</scr' + 'ipt>
+</body></html>`;
+  }
+
+  // ── SHARED DISCOVERY PREAMBLE ───────────────────────────────────────────────
+  else if (type === 'rogs' || type === 'rfp' || type === 'rfa') {
+    const prefix     = type === 'rogs' ? 'rogs' : type === 'rfp' ? 'rfp' : 'rfa';
+    const causeNo    = document.getElementById('doc-' + prefix + '-causeno')?.value.trim() || '';
+    const court      = document.getElementById('doc-' + prefix + '-court')?.value.trim() || '';
+    const svcDateRaw = document.getElementById('doc-' + prefix + '-date')?.value || '';
+    const svcDate    = svcDateRaw ? fmtDate(svcDateRaw) : today;
+
+    if (!causeNo) { toast('Enter the Cause No. before generating', 'error'); return; }
+
+    const defLine = `${escapeHtml(debtorName)}${coDebtorName ? ' and ' + escapeHtml(coDebtorName) : ''}`;
+    const noteDefn = `"Note" shall refer to the ${escapeHtml(noteDesc)}.`;
+    const collateralDefn = `"Collateral" shall refer to the ${escapeHtml(collateralFullDesc)}.`;
+
+    const sigAndCert = `<div style="margin-top:24px;text-align:right;">
+  Respectfully submitted,<br><br>
+  The Lippincott Law Firm, PLLC<br>11507 Susie St.<br>Austin, Texas 78748<br>
+  Telephone: (512) 472-2300<br>Telecopier: (512) 472-2303<br><br>
+  By: /s/ Marc L. Lippincott<br>
+  Marc L. Lippincott<br>State Bar No. 24002480<br>Marc@thelippincottlawfirm.com<br>
+  Attorney for Plaintiff
+</div>
+${certOfService(svcDate, debtorName, debtorAddr)}`;
+
+    if (type === 'rogs') {
+      html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Interrogatories — ${escapeHtml(debtorName)}</title><style>${CSS}</style></head><body>
+${caption(causeNo, court)}
+<h2>PLAINTIFF'S FIRST SET OF INTERROGATORIES TO DEFENDANT</h2>
+<p><strong>TO:</strong>&nbsp;&nbsp;Defendant, ${defLine}.</p>
+<p>Pursuant to Rules 193 and 197 of the Texas Rules of Civil Procedure, Plaintiff, ${escapeHtml(plaintiffLine.replace(/\n/g,', '))}, requests that Defendant, ${defLine}, answer the following interrogatories fully, in writing, and under oath, and serve copies of the responses upon Plaintiff by and through its attorneys of record, Marc L. Lippincott, The Lippincott Law Firm, PLLC, 11507 Susie St., Austin, Texas 78748, within 30 days of the date of service of these interrogatories upon you.</p>
+${sigAndCert}
+<div style="page-break-before:always;">
+<h2>PLAINTIFF'S FIRST SET OF INTERROGATORIES</h2>
+<p><em>[Standard instructions and definitions omitted for brevity — include full version per TRCP 197]</em></p>
+<p><strong>DEFINITIONS</strong> (key terms):<br>
+"Plaintiff" or "${escapeHtml(clientName.split(' ')[0])}" shall refer to ${escapeHtml(plaintiffLine.replace(/\n/g,', '))}.<br>
+"You," "your," or "Defendant" shall refer to ${defLine}.<br>
+${noteDefn}<br>
+${collateralDefn}</p>
+${[
+  ['1','Identify each person other than your attorneys who either participated in the preparation of the responses to these interrogatories or supplied information used in such preparation. In your response, indicate the interrogatory or interrogatories with respect to which each person was involved.'],
+  ['2','Provide each address at which you have resided in the last 12 months, the time period during which you resided at that address, whether you provided notice to the Plaintiff of each change of address, and if notice to the Plaintiff was provided, describe each specific notification, including the date, method, content, and parties thereto.'],
+  ['3','Identify all documents or tangible things reviewed or relied on by you in preparation for your responses to these interrogatories. Alternatively, produce such documents contemporaneously with serving your responses.'],
+  ['4','As required by Rule 192.3(d) of the Texas Rules of Civil Procedure, identify the name, address, and telephone number of any person who is expected to be called to testify at trial.'],
+  ['5','With reference to the Note and Collateral identified therein, state or identify: (a) the date and amount of each payment made under the contract; (b) the principal balance due on the date of last payment; (c) the date, amount, and nature of each offset or credit Defendant claims; (d) the present location of the Collateral and the person who presently resides in it; (e) the name, address, and phone number of the owner of the real property upon which the Collateral is located.'],
+  ['6','If any request for admission served contemporaneously herewith is not admitted, state in detail all facts known to you, directly or indirectly, which you contend to be either (1) the basis for your denial, or (2) the basis for your inability to admit the same.'],
+  ['7','Identify each demand for payment you received from the Plaintiff and state the approximate date you received each demand (including invoices, statements, letters).'],
+  ['8','State in detail the factual basis of each defense which you now assert or will assert in this action.'],
+  ['9','If you assert that the claim herein sued upon is the obligation of any person other than yourself, state in detail all facts known to you, directly or indirectly, which you contend support such an assertion, including the complete name and address of each such other person and your relationship to each such person.'],
+  ['10','If you deny that all conditions precedent to Plaintiff\'s claims have been performed or have occurred, identify all such conditions precedent.'],
+  ['11','If you allege that Plaintiff has failed to join all parties needed for just adjudication, identify all such parties.'],
+  ['12','If you allege the Plaintiff has not accounted for all payments, please provide an accounting of all such alleged payments.'],
+].map(([n,q]) => `<p><strong>Interrogatory No. ${n}</strong><br>${escapeHtml(q)}</p><p style="margin-left:0.5in;"><strong>RESPONSE:</strong></p>`).join('\n')}
+</div>
+<scr' + 'ipt>window.print();</scr' + 'ipt>
+</body></html>`;
+    }
+
+    else if (type === 'rfp') {
+      html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>RFP — ${escapeHtml(debtorName)}</title><style>${CSS}</style></head><body>
+${caption(causeNo, court)}
+<h2>PLAINTIFF'S FIRST REQUEST FOR PRODUCTION OF DOCUMENTS TO DEFENDANT</h2>
+<p><strong>TO:</strong>&nbsp;&nbsp;Defendant, ${defLine}.</p>
+<p>Pursuant to Rules 193 and 196 of the Texas Rules of Civil Procedure, Plaintiff requests that Defendant, ${defLine}, respond to Plaintiff's First Request for Production of Documents and serve a copy of the response upon Plaintiff by and through its attorneys of record, Marc L. Lippincott, The Lippincott Law Firm, PLLC, 11507 Susie St., Austin, Texas 78748, within 30 days of the date of service. Defendant is further instructed to produce all documents and tangible items delineated herein which are in its possession or in the possession of its attorneys, agents, employees, or other representatives to the undersigned counsel of record at 11507 Susie St., Austin, Texas 78748, within 30 days, and to permit Plaintiff to inspect and copy all such items.</p>
+${sigAndCert}
+<div style="page-break-before:always;">
+<h2>PLAINTIFF'S FIRST REQUEST FOR PRODUCTION OF DOCUMENTS TO DEFENDANT</h2>
+<p><strong>DEFINITIONS</strong> (key terms):<br>
+"Plaintiff" or "${escapeHtml(clientName.split(' ')[0])}" shall refer to ${escapeHtml(plaintiffLine.replace(/\n/g,', '))}.<br>
+"You," "your," or "Defendant" shall refer to ${defLine}.<br>
+${noteDefn}<br>
+${collateralDefn}</p>
+${[
+  ['1','Produce all documents related to any discoverable fact in this case.'],
+  ['2','Produce all documents related to the Note and Collateral made the basis of this suit.'],
+  ['3','Produce all documents which relate to payments made pursuant to the Note and Collateral.'],
+  ['4','Produce all documents which relate to credits or offsets Defendant alleges should be applied against the debt made the basis of Plaintiff\'s Original Petition (including any amendments).'],
+  ['5','Produce all documents which relate to insurance for the Collateral.'],
+  ['6','Produce all documents which relate to taxes for the Collateral.'],
+  ['7','Produce all invoices and statements of account received by Defendant from Plaintiff.'],
+  ['8','Produce Defendant\'s payment records relating to the Note and Collateral.'],
+  ['9','Produce all letters, faxes, correspondence, or other communications relating to the debt or account and Collateral referenced in Plaintiff\'s Original Petition.'],
+  ['10','Produce all documents which constitute correspondence or communications between Defendant and any other party to this suit regarding any matter relevant to this suit.'],
+  ['11','Produce all memoranda of any telephone conversation relating directly or indirectly to the matters alleged in Plaintiff\'s Original Petition or any defense thereto.'],
+  ['12','Produce all documents identifying the person(s) in possession of the Collateral.'],
+  ['13','Produce all documents identifying the resident(s) of the Collateral.'],
+  ['14','Produce all documents related to the park or community in which the Collateral is located.'],
+  ['15','Produce all documents related to ownership of the real property upon which the Collateral is located.'],
+  ['16','Produce all documents and tangible things that will be used or offered at trial.'],
+  ['17','Produce all statements obtained from any person pertaining to the claims, counterclaims, allegations, and defenses asserted in this suit.'],
+  ['18','If you have failed to answer with an unqualified admission to any Request for Admission (served contemporaneously herewith), produce all documents which relate to your answer.'],
+  ['19','Produce all documents and tangible things identified in your answers to Interrogatories (served contemporaneously herewith), if any.'],
+  ['20','Produce all bank statements and canceled checks related to all payments made.'],
+].map(([n,q]) => `<p><strong>Request for Production No. ${n}</strong><br>${escapeHtml(q)}</p><p style="margin-left:0.5in;"><strong>RESPONSE:</strong></p>`).join('\n')}
+</div>
+<scr' + 'ipt>window.print();</scr' + 'ipt>
+</body></html>`;
+    }
+
+    else if (type === 'rfa') {
+      html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>RFA — ${escapeHtml(debtorName)}</title><style>${CSS}</style></head><body>
+${caption(causeNo, court)}
+<h2>PLAINTIFF'S FIRST REQUEST FOR ADMISSIONS TO DEFENDANT</h2>
+<p><strong>TO:</strong>&nbsp;&nbsp;Defendant, ${defLine}.</p>
+<p>Plaintiff, ${escapeHtml(plaintiffLine.replace(/\n/g,', '))}, pursuant to Rules 193 and 198 of the Texas Rules of Civil Procedure, request that Defendant, ${defLine}, respond to the following Request for Admissions fully, in writing, and serve copies of the responses upon Plaintiff by and through its attorneys of record Marc L. Lippincott, The Lippincott Law Firm, PLLC, 11507 Susie St., Austin, Texas 78748, within 30 days of the date of service of this Request for Admissions. Please be aware that each answer is admitted without necessity of a court order unless, within 30 days after service of this Request for Admissions, Defendant serves a written answer or objection addressed to each such matter.</p>
+${sigAndCert}
+<div style="page-break-before:always;">
+<h2>PLAINTIFF'S FIRST REQUEST FOR ADMISSIONS</h2>
+<p><strong>DEFINITIONS</strong> (key terms):<br>
+"Plaintiff" or "${escapeHtml(clientName.split(' ')[0])}" shall refer to ${escapeHtml(plaintiffLine.replace(/\n/g,', '))}.<br>
+"You," "your," or "Defendant" shall refer to ${defLine}.<br>
+${noteDefn}<br>
+${collateralDefn}</p>
+${[
+  ['1','Written demand for payment of the claim sued upon was made on you more than thirty (30) days ago.'],
+  ['2','After receiving demand for payment, Defendant failed to tender payment to Plaintiff.'],
+  ['3','Defendant executed the Note, a copy of which was attached to Plaintiff\'s Original Petition (including any amendments).'],
+  ['4','Defendant received valuable consideration for the execution of the Note.'],
+  ['5','Plaintiff is the owner and holder of the security interest in the Collateral described in the Note.'],
+  ['6','The debt described in the Note has not been paid in full by Defendant.'],
+  ['7','Defendant has not performed all covenants and conditions contained in the Note.'],
+  ['8','Defendant has not made all payments as required under the Note.'],
+  ['9','The amount claimed in Plaintiff\'s Original Petition (including any amendments) is true and correct.'],
+  ['10','The amount claimed in Plaintiff\'s Original Petition (including any amendments) is due from Defendant to Plaintiff.'],
+  ['11','Defendant is not entitled to any further credits, offsets, payments, claims, or deductions to the amount claimed in Plaintiff\'s Original Petition (including any amendments).'],
+  ['12','Plaintiff\'s Original Petition (including any amendments) states the balance due after all credits, offsets, payments, claims, or deductions have been allowed.'],
+  ['13','There are no further credits, offsets, payments, claims, or deductions to the amount claimed in Plaintiff\'s Original Petition (including any amendments).'],
+  ['14','Plaintiff made no verbal agreements with Defendant.'],
+  ['15','There are no facts upon which Defendant relies as a basis for any defense to this suit.'],
+  ['16','There are no documents which Defendant intends to utilize as evidence of any defense to this suit.'],
+  ['17','Every statement and allegation contained in Plaintiff\'s Original Petition (including any amendments) is true and correct.'],
+  ['18','Plaintiff is entitled to the relief requested in Plaintiff\'s Original Petition (including any amendments).'],
+  ['19','Due to Defendant\'s defaults, it was necessary for Plaintiff to hire the undersigned attorney to file suit, causing Plaintiff to incur fees and costs in the collection of the amounts due.'],
+  ['20','All conditions precedent to Plaintiff\'s claims have been performed or have occurred.'],
+].map(([n,q]) => `<p><strong>Request for Admission No. ${n}</strong><br>${escapeHtml(q)}</p><p style="margin-left:0.5in;"><strong>RESPONSE:</strong></p>`).join('\n')}
+</div>
+<scr' + 'ipt>window.print();</scr' + 'ipt>
+</body></html>`;
+    }
+  }
+
+  // Open in new window and trigger print
+  if (html) {
+    const win = window.open('', '_blank');
+    if (!win) { toast('Pop-up blocked — allow pop-ups for this site', 'error'); return; }
+    win.document.write(html);
+    win.document.close();
+  }
+}
+// ── END DOCUMENT GENERATION ───────────────────────────────────────────────────
 
 function switchCaseTab(tab) {
   document.querySelectorAll('.case-tab').forEach(t => {
