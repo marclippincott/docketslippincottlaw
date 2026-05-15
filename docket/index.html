@@ -13371,11 +13371,12 @@ function readLarReviewForm() {
     if (isDiffMode && !checkedKeys.has(f.key)) return;
     let val = null;
     if (f.type === 'number-money' || f.type === 'number-int') {
-      val = el.value === '' ? null : Number(el.value);
+      const raw = el.value.trim();
+      val = raw === '' ? null : (isNaN(Number(raw)) ? null : Number(raw));
     } else if (f.type === 'date') {
       val = el.value === '' ? null : el.value;
     } else {
-      val = el.value === '' ? null : el.value;
+      val = el.value.trim() === '' ? null : el.value.trim();
     }
     target[f.key] = val;
   };
@@ -13421,8 +13422,15 @@ async function saveLarReview() {
           imported_by: currentUser?.email || null,
           ...finVals,
         };
-        const { error: finErr } = await db.from('matter_financials').insert(finRow);
-        if (finErr) throw new Error('Saved matter, but financial snapshot failed: ' + finErr.message);
+        // Strip null values — DB has no NOT NULL on financial columns so nulls are fine,
+        // but explicit nulls in the payload can cause type errors on some Postgres drivers
+        const cleanFinRow = Object.fromEntries(Object.entries(finRow).filter(([,v]) => v != null));
+        console.log('[LAR] Financial insert payload:', cleanFinRow);
+        const { error: finErr } = await db.from('matter_financials').insert(cleanFinRow);
+        if (finErr) {
+          console.error('[LAR] Financial insert error:', finErr);
+          throw new Error('Matter saved, but financial snapshot failed: ' + finErr.message);
+        }
         // Refresh the last-paid cache so SOL auto-default tracks the new snapshot
         if (finRow.last_paid_date) _lastPaidByMatter[state.matter_id] = finRow.last_paid_date;
       }
@@ -13519,8 +13527,13 @@ async function saveLarReview() {
             imported_by: currentUser?.email || null,
             ...finVals,
           };
-          const { error: finErr } = await db.from('matter_financials').insert(finRow);
-          if (finErr) throw new Error('Matter saved, but financial snapshot failed: ' + finErr.message);
+          const cleanFinRow = Object.fromEntries(Object.entries(finRow).filter(([,v]) => v != null));
+          console.log('[LAR] Financial insert payload:', cleanFinRow);
+          const { error: finErr } = await db.from('matter_financials').insert(cleanFinRow);
+          if (finErr) {
+            console.error('[LAR] Financial insert error:', finErr);
+            throw new Error('Matter saved, but financial snapshot failed: ' + finErr.message);
+          }
           if (finRow.last_paid_date) _lastPaidByMatter[matterId] = finRow.last_paid_date;
         }
 
