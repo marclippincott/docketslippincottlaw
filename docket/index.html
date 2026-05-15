@@ -2376,6 +2376,7 @@ ENTRY [MM/DD/YY] [INITIALS]: [status note]</pre>
             <option value="Post-judgment">Post-judgment</option>
             <option value="Bankruptcy">Bankruptcy</option>
             <option value="Probate">Probate</option>
+            <option value="Foreclosure">Foreclosure</option>
           </select>
         </div>
       </div>
@@ -6460,13 +6461,11 @@ async function openDetail(id, opts) {
 
     <!-- ============== DOCUMENTS TAB ============== -->
     <div class="case-tab-panel" id="case-tab-documents">
-      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;align-items:flex-start;">
-        <div style="flex:1;min-width:200px;">
-          <h3 style="margin:0 0 4px;font-size:14px;">Generate documents</h3>
-          <p style="margin:0;font-size:11px;color:var(--muted);">Merge case data into standard firm documents. Opens a print-ready PDF in a new window.</p>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">
+      <p style="margin:0 0 14px;font-size:11px;color:var(--muted);">Merge case data into firm templates. Word .docx downloads directly; PDF preview opens in a new window.</p>
+
+      <!-- ── PRE-SUIT ──────────────────────────────────────────────────── -->
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--rule);padding-bottom:4px;margin-bottom:10px;">Pre-Suit</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:20px;">
 
         <!-- Demand Letter -->
         <div class="card" style="padding:14px 16px;">
@@ -6485,6 +6484,11 @@ async function openDetail(id, opts) {
             <button class="btn btn-sm" style="flex:1;" onclick="generateDocument('demand')">&#x1F5A8; PDF preview</button>
           </div>
         </div>
+      </div>
+
+      <!-- ── LITIGATION / SUIT ─────────────────────────────────────────── -->
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--rule);padding-bottom:4px;margin-bottom:10px;">Litigation</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:20px;">
 
         <!-- Initial Disclosures -->
         <div class="card" style="padding:14px 16px;">
@@ -6587,6 +6591,133 @@ async function openDetail(id, opts) {
           <div style="display:flex;gap:6px;">
             <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDocWord('rfa')">&#x1F4C4; Word .docx</button>
             <button class="btn btn-sm" style="flex:1;" onclick="generateDocument('rfa')">&#x1F5A8; PDF preview</button>
+          </div>
+        </div>
+
+        <!-- Original Petition 1 Def -->
+        <div class="card" style="padding:14px 16px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#9878; Original Petition</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Plaintiff's Original Petition — 1 Defendant (Chattel)</div>
+          <div style="display:flex;gap:6px;margin-top:auto;">
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDocWord('petition_1def')">&#x1F4C4; Word .docx</button>
+          </div>
+        </div>
+
+        <!-- Original Petition 2 Def -->
+        <div class="card" style="padding:14px 16px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#9878; Original Petition (2 Def.)</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Plaintiff's Original Petition — 2 Defendants (Chattel)</div>
+          <div style="display:flex;gap:6px;margin-top:auto;">
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDocWord('petition_2def')">&#x1F4C4; Word .docx</button>
+          </div>
+        </div>
+
+        <!-- MSJ -->
+        <div class="card" style="padding:14px 16px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#9878; Motion for Summary Judgment</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Traditional &amp; No-Evidence MSJ + Order Granting</div>
+          <div style="display:flex;gap:6px;margin-top:auto;">
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDocWord('msj')">&#x1F4C4; MSJ</button>
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDocWord('msj_order')">&#x1F4C4; Order</button>
+          </div>
+        </div>
+
+        <!-- Default Judgment -->
+        <div class="card" style="padding:14px 16px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#9878; Default Judgment</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Motion + Judgment (TFS as servicer)</div>
+          <div style="display:flex;gap:6px;margin-top:auto;">
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDocWord('dj_motion')">&#x1F4C4; Motion</button>
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDocWord('dj_judgment')">&#x1F4C4; Judgment</button>
+          </div>
+        </div>
+
+        <!-- Nonsuit -->
+        <div class="card" style="padding:14px 16px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#128683; Nonsuit</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Notice of Nonsuit &amp; Order for Nonsuit</div>
+          <div style="display:flex;gap:6px;margin-top:auto;">
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDocWord('nonsuit_notice')">&#x1F4C4; Notice</button>
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDocWord('nonsuit_order')">&#x1F4C4; Order</button>
+          </div>
+        </div>
+
+        <!-- Sub Service -->
+        <div class="card" style="padding:14px 16px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#128101; Substitute Service</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Motion &amp; Order for Substituted Service</div>
+          <div style="display:flex;gap:6px;margin-top:auto;">
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDocWord('sub_service_mtn')">&#x1F4C4; Motion</button>
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDocWord('sub_service_ord')">&#x1F4C4; Order</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── FORECLOSURE ───────────────────────────────────────────────── -->
+      <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--rule);padding-bottom:4px;margin-bottom:10px;">Foreclosure</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:20px;">
+
+        <!-- Appointment of Sub Trustee -->
+        <div class="card" style="padding:14px 16px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#9961; Appt. of Substitute Trustee</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Appoints substitute trustee to conduct foreclosure sale</div>
+          <div style="display:flex;gap:6px;margin-top:auto;">
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDocWord('appt_sub_trustee')">&#x1F4C4; Word .docx</button>
+          </div>
+        </div>
+
+        <!-- Notice of Foreclosure Sale -->
+        <div class="card" style="padding:14px 16px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#128226; Notice of Foreclosure Sale</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Posted notice of the foreclosure sale date &amp; time</div>
+          <div style="display:flex;gap:6px;margin-top:auto;">
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDocWord('foreclosure_notice')">&#x1F4C4; Word .docx</button>
+          </div>
+        </div>
+
+        <!-- Foreclosure Ltr to Debtor -->
+        <div class="card" style="padding:14px 16px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#9993; Notice of Foreclosure Ltr</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Letter to debtor — Notice of Foreclosure Sale</div>
+          <div style="display:flex;gap:6px;margin-top:auto;">
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDocWord('foreclosure_ltr')">&#x1F4C4; Word .docx</button>
+          </div>
+        </div>
+
+        <!-- Foreclosure Affidavit -->
+        <div class="card" style="padding:14px 16px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#128203; Foreclosure Affidavit</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Affidavit supporting the foreclosure</div>
+          <div style="display:flex;gap:6px;margin-top:auto;">
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDocWord('foreclosure_affidavit')">&#x1F4C4; Word .docx</button>
+          </div>
+        </div>
+
+        <!-- Posting & Filing Affidavit -->
+        <div class="card" style="padding:14px 16px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#128203; Posting &amp; Filing Affidavit</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Affidavit of posting &amp; filing by substitute trustee</div>
+          <div style="display:flex;gap:6px;margin-top:auto;">
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDocWord('foreclosure_posting')">&#x1F4C4; Word .docx</button>
+          </div>
+        </div>
+
+        <!-- Foreclosure Sale Deed -->
+        <div class="card" style="padding:14px 16px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#127968; Foreclosure Sale Deed</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Substitute Trustee's Deed conveying title after sale</div>
+          <div style="display:flex;gap:6px;margin-top:auto;">
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDocWord('foreclosure_deed')">&#x1F4C4; Word .docx</button>
+          </div>
+        </div>
+
+        <!-- Deed in Lieu -->
+        <div class="card" style="padding:14px 16px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#128196; Deed in Lieu</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Warranty Deed in Lieu of Foreclosure</div>
+          <div style="display:flex;gap:6px;margin-top:auto;">
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDocWord('deed_in_lieu')">&#x1F4C4; Word .docx</button>
           </div>
         </div>
 
@@ -6841,7 +6972,16 @@ async function generateDocWord(docType) {
     const blob = await resp.blob();
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    const labels = { disclosures: 'Initial_Disclosures', rogs: 'Interrogatories', rfp: 'RFP', rfa: 'RFA' };
+    const labels = {
+      disclosures: 'Initial_Disclosures', rogs: 'Interrogatories', rfp: 'RFP', rfa: 'RFA',
+      appt_sub_trustee: 'Appt_Sub_Trustee', foreclosure_notice: 'Foreclosure_Notice_Sale',
+      foreclosure_ltr: 'Foreclosure_Ltr_Ntc', foreclosure_affidavit: 'Foreclosure_Affidavit',
+      foreclosure_posting: 'Foreclosure_Posting_Aff', foreclosure_deed: 'Foreclosure_Sale_Deed',
+      petition_1def: 'Original_Petition_1Def', petition_2def: 'Original_Petition_2Def',
+      nonsuit_notice: 'Notice_of_Nonsuit', nonsuit_order: 'Order_Nonsuit',
+      sub_service_mtn: 'Mtn_Sub_Service', sub_service_ord: 'Ord_Sub_Service',
+      deed_in_lieu: 'Deed_in_Lieu',
+    };
     const fileNo = m.our_file_no ? m.our_file_no.replace(/[^a-z0-9]/gi, '_') : 'doc';
     a.href     = url;
     a.download = (labels[docType] || docType) + '_' + fileNo + '.docx';
@@ -7606,7 +7746,7 @@ function populateBulkCategoryDropdown() {
   // Reuse the same group structure as the entry-modal dropdown
   const groups = {};
   for (const c of ENTRY_CATEGORIES) (groups[c.group] = groups[c.group] || []).push(c);
-  const order = ['General', 'Pre-suit', 'Suit', 'Post-judgment', 'Bankruptcy', 'Probate'];
+  const order = ['General', 'Pre-suit', 'Suit', 'Post-judgment', 'Bankruptcy', 'Probate', 'Foreclosure'];
   // First option is a placeholder
   const ph = document.createElement('option');
   ph.value = ''; ph.textContent = 'Change category to…'; ph.disabled = true; ph.selected = true;
@@ -9321,7 +9461,7 @@ function initActivityFeedFilters() {
     catBox.dataset.init = '1';
     const groups = {};
     for (const c of ENTRY_CATEGORIES) (groups[c.group] = groups[c.group] || []).push(c);
-    const order = ['General', 'Pre-suit', 'Suit', 'Post-judgment', 'Bankruptcy', 'Probate'];
+    const order = ['General', 'Pre-suit', 'Suit', 'Post-judgment', 'Bankruptcy', 'Probate', 'Foreclosure'];
     let html = '';
     order.forEach((g, i) => {
       if (!groups[g]) return;
@@ -9670,7 +9810,7 @@ function populateAfBulkCategoryDropdown() {
   if (sel.options.length > 0) return;  // already populated
   const groups = {};
   for (const c of ENTRY_CATEGORIES) (groups[c.group] = groups[c.group] || []).push(c);
-  const order = ['General', 'Pre-suit', 'Suit', 'Post-judgment', 'Bankruptcy', 'Probate'];
+  const order = ['General', 'Pre-suit', 'Suit', 'Post-judgment', 'Bankruptcy', 'Probate', 'Foreclosure'];
   const ph = document.createElement('option');
   ph.value = ''; ph.textContent = 'Change category to…'; ph.disabled = true; ph.selected = true;
   sel.appendChild(ph);
@@ -10167,7 +10307,7 @@ function populateEntryCategoryDropdown() {
   const groups = {};
   for (const c of ENTRY_CATEGORIES) (groups[c.group] = groups[c.group] || []).push(c);
   // Group order matches the General → Pre-suit → Suit → Post-judgment → Bankruptcy flow
-  const order = ['General', 'Pre-suit', 'Suit', 'Post-judgment', 'Bankruptcy', 'Probate'];
+  const order = ['General', 'Pre-suit', 'Suit', 'Post-judgment', 'Bankruptcy', 'Probate', 'Foreclosure'];
   for (const g of order) {
     if (!groups[g]) continue;
     const og = document.createElement('optgroup');
@@ -14052,11 +14192,11 @@ async function renderAdminCategories() {
   }
 
   // Group rows by phase
-  const groups = { General: [], 'Pre-suit': [], 'Suit': [], 'Post-judgment': [], 'Bankruptcy': [], 'Probate': [] };
+  const groups = { General: [], 'Pre-suit': [], 'Suit': [], 'Post-judgment': [], 'Bankruptcy': [], 'Probate': [], 'Foreclosure': [] };
   for (const c of (cats || [])) {
     if (groups[c.group_name]) groups[c.group_name].push(c);
   }
-  const order = ['General', 'Pre-suit', 'Suit', 'Post-judgment', 'Bankruptcy', 'Probate'];
+  const order = ['General', 'Pre-suit', 'Suit', 'Post-judgment', 'Bankruptcy', 'Probate', 'Foreclosure'];
 
   let html = '';
   for (const g of order) {
@@ -14071,9 +14211,10 @@ async function renderAdminCategories() {
     const enabled = groups[g].filter(c => c.enabled).length;
     const countLabel = enabled === total ? `${total}` : `${enabled} of ${total}`;
     html += `<div class="${phaseClass}" data-phase="${escapeHtml(g)}">`;
-    html += `<div class="phase-header" onclick="toggleAdminPhase(this)">
-      <span>${escapeHtml(g)}</span>
-      <span class="phase-count">${countLabel}</span>
+    html += `<div class="phase-header" style="display:flex;align-items:center;">
+      <span style="flex:1;cursor:pointer;" onclick="toggleAdminPhase(this.parentElement)">${escapeHtml(g)}</span>
+      <span class="phase-count" style="cursor:pointer;" onclick="toggleAdminPhase(this.parentElement)">${countLabel}</span>
+      <button class="btn btn-sm" onclick="openNewCategoryModalForGroup('${escapeHtml(g)}')" style="font-size:10px;padding:2px 7px;margin-left:8px;" title="Add milestone to ${escapeHtml(g)}">+ Add</button>
     </div>`;
     html += '<table>';
     html += `<thead><tr>
@@ -14119,6 +14260,13 @@ async function renderAdminCategories() {
     html += '</div>';  // close .phase-group
   }
   document.getElementById('admin-categories').innerHTML = html;
+}
+
+function openNewCategoryModalForGroup(group) {
+  openNewCategoryModal();
+  // Pre-select the group
+  const sel = document.getElementById('cat-group');
+  if (sel) sel.value = group;
 }
 
 function openNewCategoryModal() {
