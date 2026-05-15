@@ -8087,24 +8087,26 @@ async function renderReminders() {
         const assignee = r.user_profiles?.full_name || '—';
         const creator  = r.creator?.full_name || '';
         const matterLabel = r.matters ? `${escapeHtml(r.matters.debtor_name_full || r.matters.debtor_name || '')} <span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">${escapeHtml(r.matters.our_file_no||'')}</span>` : '';
-        return `<div style="display:flex;gap:10px;align-items:start;padding:9px 4px;border-bottom:1px solid var(--rule);${r.completed?'opacity:0.5;':''}${overdue?'background:rgba(220,38,38,0.03);':''}">
-          <input type="checkbox" ${r.completed?'checked':''} onchange="toggleReminderDone('${r.id}',this.checked)"
-            style="width:auto;margin-top:3px;flex-shrink:0;" title="Mark complete" />
+        const rowClick = r.matter_id ? `onclick="openDetail('${r.matter_id}')" title="Open case detail"` : '';
+        const rowCursor = r.matter_id ? 'cursor:pointer;' : '';
+        return `<div ${rowClick} style="display:flex;gap:10px;align-items:start;padding:9px 4px;border-bottom:1px solid var(--rule);${rowCursor}${r.completed?'opacity:0.5;':''}${overdue?'background:rgba(220,38,38,0.03);':''}">
+          <input type="checkbox" ${r.completed?'checked':''} onchange="event.stopPropagation();toggleReminderDone('${r.id}',this.checked)"
+            style="width:auto;margin-top:3px;flex-shrink:0;" title="${r.completed?'Undo — mark incomplete':'Mark complete'}" />
           <div style="flex:1;min-width:0;">
             <div style="font-size:12px;font-weight:500;${r.completed?'text-decoration:line-through;color:var(--muted);':overdue?'color:var(--danger);':''}">
               ${escapeHtml(r.title)}
+              ${r.matters ? `<span style="font-size:10px;font-weight:400;color:var(--accent);margin-left:6px;">→ ${escapeHtml(r.matters.debtor_name_full || r.matters.debtor_name || '')} <span style="font-family:var(--font-mono);color:var(--muted);">${escapeHtml(r.matters.our_file_no||'')}</span></span>` : ''}
             </div>
             <div style="font-size:11px;color:var(--muted);margin-top:2px;display:flex;gap:10px;flex-wrap:wrap;">
               <span>${timeStr}</span>
-              ${matterLabel ? `<span>📁 ${matterLabel}</span>` : ''}
               <span>→ ${escapeHtml(assignee)}</span>
               ${creator && creator !== assignee ? `<span style="color:var(--muted);">set by ${escapeHtml(creator)}</span>` : ''}
               ${delivery ? `<span>${delivery}</span>` : ''}
             </div>
             ${r.notes ? `<div style="font-size:11px;color:var(--muted);margin-top:3px;font-style:italic;">${escapeHtml(r.notes)}</div>` : ''}
           </div>
-          <div style="display:flex;gap:4px;flex-shrink:0;">
-            ${r.matters ? `<button class="btn btn-sm" onclick="openDetail('${r.matter_id}')" style="font-size:10px;padding:2px 6px;" title="Open case">→</button>` : ''}
+          <div style="display:flex;gap:4px;flex-shrink:0;" onclick="event.stopPropagation()">
+            ${r.completed ? `<button class="btn btn-sm" onclick="toggleReminderDone('${r.id}',false)" style="font-size:10px;padding:2px 6px;color:var(--accent);border-color:var(--accent);" title="Mark as incomplete">↩ Undo</button>` : ''}
             <button class="btn btn-sm" onclick="openReminderModal('${r.id}')" style="font-size:10px;padding:2px 6px;">Edit</button>
           </div>
         </div>`;
