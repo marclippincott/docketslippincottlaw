@@ -6474,7 +6474,10 @@ async function openDetail(id, opts) {
           <div id="doc-demand-addr-checkboxes" style="border:1px solid var(--rule);padding:8px 10px;border-radius:2px;background:var(--cream);">
             <span style="font-size:11px;color:var(--muted);">Loading addresses…</span>
           </div>
-          <button class="btn btn-primary btn-sm" style="width:100%;margin-top:8px;" onclick="generateDocument('demand')">Generate PDF &#x2197;</button>
+          <div style="display:flex;gap:6px;margin-top:8px;">
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDemandWord()">&#x1F4C4; Word .docx</button>
+            <button class="btn btn-sm" style="flex:1;" onclick="generateDocument('demand')">&#x1F5A8; PDF preview</button>
+          </div>
         </div>
 
         <!-- Initial Disclosures -->
@@ -6509,7 +6512,10 @@ async function openDetail(id, opts) {
             <label style="font-size:10px;">Triad witnesses (one per line)</label>
             <textarea id="doc-disc-witnesses" style="height:54px;font-size:11px;" placeholder="Matthew Shelar&#10;Toni Sudduth&#10;Desmond Mitchell&#10;Fawn Owens"></textarea>
           </div>
-          <button class="btn btn-primary btn-sm" style="width:100%;" onclick="generateDocument('disclosures')">Generate PDF &#x2197;</button>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDocWord('disclosures')">&#x1F4C4; Word .docx</button>
+            <button class="btn btn-sm" style="flex:1;" onclick="generateDocument('disclosures')">&#x1F5A8; PDF preview</button>
+          </div>
         </div>
 
         <!-- Interrogatories -->
@@ -6528,7 +6534,10 @@ async function openDetail(id, opts) {
             <label style="font-size:10px;">Service date</label>
             <input id="doc-rogs-date" type="date" style="font-size:12px;" />
           </div>
-          <button class="btn btn-primary btn-sm" style="width:100%;" onclick="generateDocument('rogs')">Generate PDF &#x2197;</button>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDocWord('rogs')">&#x1F4C4; Word .docx</button>
+            <button class="btn btn-sm" style="flex:1;" onclick="generateDocument('rogs')">&#x1F5A8; PDF preview</button>
+          </div>
         </div>
 
         <!-- RFPs -->
@@ -6547,7 +6556,10 @@ async function openDetail(id, opts) {
             <label style="font-size:10px;">Service date</label>
             <input id="doc-rfp-date" type="date" style="font-size:12px;" />
           </div>
-          <button class="btn btn-primary btn-sm" style="width:100%;" onclick="generateDocument('rfp')">Generate PDF &#x2197;</button>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDocWord('rfp')">&#x1F4C4; Word .docx</button>
+            <button class="btn btn-sm" style="flex:1;" onclick="generateDocument('rfp')">&#x1F5A8; PDF preview</button>
+          </div>
         </div>
 
         <!-- RFAs -->
@@ -6566,7 +6578,10 @@ async function openDetail(id, opts) {
             <label style="font-size:10px;">Service date</label>
             <input id="doc-rfa-date" type="date" style="font-size:12px;" />
           </div>
-          <button class="btn btn-primary btn-sm" style="width:100%;" onclick="generateDocument('rfa')">Generate PDF &#x2197;</button>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDocWord('rfa')">&#x1F4C4; Word .docx</button>
+            <button class="btn btn-sm" style="flex:1;" onclick="generateDocument('rfa')">&#x1F5A8; PDF preview</button>
+          </div>
         </div>
 
       </div>
@@ -6693,6 +6708,150 @@ async function deleteAddress(addrId) {
 }
 
 // ── END MATTER ADDRESSES ──────────────────────────────────────────────────────
+
+// ── DEMAND LETTER WORD GENERATION ────────────────────────────────────────────
+async function generateDemandWord() {
+  const m = allMatters.find(x => x.id === currentMatterId);
+  if (!m) { toast('No matter loaded', 'error'); return; }
+
+  const pastDue = document.getElementById('doc-demand-pastdue')?.value.trim() || '';
+  if (!pastDue) { toast('Enter the past due amount before generating', 'error'); return; }
+
+  // Collect checked addresses + CMRR numbers
+  const wrap = document.getElementById('doc-demand-addr-checkboxes');
+  const allAddrs = window._matterAddresses || [];
+  const debtorAddrs   = wrap?._debtorAddrs   || allAddrs.filter(a => a.party === 'debtor');
+  const codebtorAddrs = wrap?._codebtorAddrs  || allAddrs.filter(a => a.party === 'codebtor');
+
+  const addresses = [];
+  debtorAddrs.forEach((a, i) => {
+    const cb   = document.getElementById('doc-addr-cb-deb-' + i);
+    const cmrr = document.getElementById('doc-addr-cmrr-deb-' + i)?.value.trim() || '';
+    if (cb && cb.checked) addresses.push({ party: 'debtor', address: a.address, cmrr });
+  });
+  codebtorAddrs.forEach((a, i) => {
+    const cb   = document.getElementById('doc-addr-cb-co-' + i);
+    const cmrr = document.getElementById('doc-addr-cmrr-co-' + i)?.value.trim() || '';
+    if (cb && cb.checked) addresses.push({ party: 'codebtor', address: a.address, cmrr });
+  });
+
+  if (!addresses.some(a => a.party === 'debtor')) {
+    toast('Select at least one debtor address', 'error'); return;
+  }
+
+  const btn = event?.target;
+  if (btn) { btn.textContent = 'Generating…'; btn.disabled = true; }
+
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    const resp = await fetch(SUPA_URL + '/functions/v1/generate-demand-letter', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + session.access_token,
+      },
+      body: JSON.stringify({ matter_id: currentMatterId, addresses, past_due: pastDue }),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ error: resp.statusText }));
+      throw new Error(err.error || resp.statusText);
+    }
+
+    // Trigger download
+    const blob = await resp.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    const fileNo = m.our_file_no ? m.our_file_no.replace(/[^a-z0-9]/gi, '_') : 'demand';
+    a.href     = url;
+    a.download = 'Demand_Letter_' + fileNo + '.docx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('Demand letter downloaded');
+
+  } catch (err) {
+    toast('Error: ' + err.message, 'error');
+    console.error('[demand-word]', err);
+  } finally {
+    if (btn) { btn.textContent = '\u{1F4C4} Word .docx'; btn.disabled = false; }
+  }
+}
+// ── END DEMAND LETTER WORD GENERATION ────────────────────────────────────────
+
+// ── DISCOVERY / DISCLOSURE WORD GENERATION ───────────────────────────────────
+async function generateDocWord(docType) {
+  const m = allMatters.find(x => x.id === currentMatterId);
+  if (!m) { toast('No matter loaded', 'error'); return; }
+
+  // Gather fields from the relevant form inputs
+  const prefix = docType === 'disclosures' ? 'disc'
+               : docType === 'rogs'        ? 'rogs'
+               : docType === 'rfp'         ? 'rfp'
+               : 'rfa';
+
+  const causeNo    = document.getElementById('doc-' + prefix + '-causeno')?.value.trim() || m.cause_no || '';
+  const court      = document.getElementById('doc-' + prefix + '-court')?.value.trim() || '';
+  const svcDateRaw = document.getElementById('doc-' + prefix + '-date')?.value || '';
+
+  if (!causeNo) { toast('Enter the Cause No. before generating', 'error'); return; }
+
+  // Disclosures extras
+  const payoff      = docType === 'disclosures' ? (document.getElementById('doc-disc-payoff')?.value.trim() || '') : '';
+  const perDiem     = docType === 'disclosures' ? (document.getElementById('doc-disc-perdiem')?.value.trim() || '') : '';
+  const intRate     = docType === 'disclosures' ? (document.getElementById('doc-disc-rate')?.value.trim() || '') : '';
+  const witnessRaw  = docType === 'disclosures' ? (document.getElementById('doc-disc-witnesses')?.value.trim() || '') : '';
+
+  const btn = event?.target;
+  if (btn) { btn.textContent = 'Generating…'; btn.disabled = true; }
+
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    const payload = {
+      matter_id:    currentMatterId,
+      doc_type:     docType,
+      cause_no:     causeNo,
+      court:        court,
+      service_date: svcDateRaw || null,
+      ...(docType === 'disclosures' ? { payoff, per_diem: perDiem, interest_rate: intRate, witnesses: witnessRaw } : {}),
+    };
+
+    const resp = await fetch(SUPA_URL + '/functions/v1/generate-demand-letter', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + session.access_token,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ error: resp.statusText }));
+      throw new Error(err.error || resp.statusText);
+    }
+
+    const blob = await resp.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    const labels = { disclosures: 'Initial_Disclosures', rogs: 'Interrogatories', rfp: 'RFP', rfa: 'RFA' };
+    const fileNo = m.our_file_no ? m.our_file_no.replace(/[^a-z0-9]/gi, '_') : 'doc';
+    a.href     = url;
+    a.download = (labels[docType] || docType) + '_' + fileNo + '.docx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast((labels[docType] || docType) + ' downloaded');
+
+  } catch (err) {
+    toast('Error: ' + err.message, 'error');
+    console.error('[doc-word]', err);
+  } finally {
+    if (btn) { btn.textContent = '\u{1F4C4} Word .docx'; btn.disabled = false; }
+  }
+}
+// ── END DISCOVERY / DISCLOSURE WORD GENERATION ───────────────────────────────
 
 // ── DOCUMENT GENERATION ──────────────────────────────────────────────────────
 // Merges matter data with standard firm document templates and opens a
