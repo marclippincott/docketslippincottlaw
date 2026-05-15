@@ -1181,9 +1181,11 @@ tr.clickable:hover td { background: rgba(139,37,0,0.03); }
   z-index: 300;
   display: none;
   max-width: 320px;
+  user-select: text;
+  -webkit-user-select: text;
 }
 .toast.show { display: block; }
-.toast.error { border-left-color: var(--danger); }
+.toast.error { border-left-color: var(--danger); max-width: 420px; }
 
 /* ── LOADING ── */
 .loading { padding: 40px; text-align: center; color: var(--muted); font-size: 13px; font-style: italic; font-family: var(--font-serif); }
@@ -2938,7 +2940,18 @@ ENTRY [MM/DD/YY] [INITIALS]: [status note]</pre>
       </div>
       <div class="form-row">
         <div class="form-group"><label>Email</label><input id="ce-email" type="email" placeholder="jane@firm.com" /></div>
-        <div class="form-group"><label>Phone</label><input id="ce-phone" placeholder="(817) 555-1212" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:0 0 100px;"><label>Label</label><input id="ce-phone-label" placeholder="Office" /></div>
+        <div class="form-group"><label>Phone 1</label><input id="ce-phone" placeholder="(817) 555-1212" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:0 0 100px;"><label>Label</label><input id="ce-phone2-label" placeholder="Cell" /></div>
+        <div class="form-group"><label>Phone 2</label><input id="ce-phone2" placeholder="(817) 555-3434" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:0 0 100px;"><label>Label</label><input id="ce-phone3-label" placeholder="Fax" /></div>
+        <div class="form-group"><label>Phone 3</label><input id="ce-phone3" placeholder="(817) 555-5656" /></div>
       </div>
       <div class="form-group"><label>Address</label><textarea id="ce-address" style="height:50px;" placeholder="123 Main St&#10;Fort Worth, TX 76102"></textarea></div>
       <div class="form-group"><label>Website</label><input id="ce-website" placeholder="https://firm.com" /></div>
@@ -3028,7 +3041,20 @@ ENTRY [MM/DD/YY] [INITIALS]: [status note]</pre>
           </div>
           <div id="ac-firm-row" class="form-group"><label>Firm</label><input id="ac-firm" placeholder="Smith &amp; Associates" /></div>
           <div id="ac-title-row" class="form-group" style="display:none;"><label>Title / Office</label><input id="ac-title" placeholder="Title or office" /></div>
+          <div class="form-row">
+            <div class="form-group" style="flex:0 0 90px;"><label>Label</label><input id="ac-phone-label" placeholder="Office" /></div>
+            <div class="form-group"><label>Phone 1</label><input id="ac-phone" /></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="flex:0 0 90px;"><label>Label</label><input id="ac-phone2-label" placeholder="Cell" /></div>
+            <div class="form-group"><label>Phone 2</label><input id="ac-phone2" /></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="flex:0 0 90px;"><label>Label</label><input id="ac-phone3-label" placeholder="Fax" /></div>
+            <div class="form-group"><label>Phone 3</label><input id="ac-phone3" /></div>
+          </div>
           <div class="form-group"><label>Email</label><input id="ac-email" type="email" /></div>
+          <div class="form-group"><label>Address</label><textarea id="ac-address" style="height:46px;" placeholder="123 Main St&#10;Fort Worth, TX 76102"></textarea></div>
         </div>
       </div>
 
@@ -4402,10 +4428,23 @@ function htmlToMarkdown(html) {
 }
 
 function toast(msg, type='') {
+  if (type === 'error') console.error('[toast error]', msg);
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.className = 'toast show' + (type ? ' '+type : '');
-  setTimeout(() => t.className = 'toast', 3500);
+  // Clear any pending auto-dismiss
+  if (t._toastTimer) clearTimeout(t._toastTimer);
+  if (type === 'error') {
+    // Errors stay until clicked — add a dismiss hint
+    t.title = 'Click to dismiss';
+    t.style.cursor = 'pointer';
+    t.onclick = () => { t.className = 'toast'; t.onclick = null; t.style.cursor = ''; };
+  } else {
+    t.title = '';
+    t.style.cursor = '';
+    t.onclick = null;
+    t._toastTimer = setTimeout(() => t.className = 'toast', 3500);
+  }
 }
 
 async function signIn() {
@@ -11092,13 +11131,17 @@ function renderContactDetailPanel(contact, type, assignments, activeTab = 'info'
 
   let tabContent = '';
   if (activeTab === 'info') {
+    const phoneRows = [];
+    if (contact.phone)  phoneRows.push([contact.phone_label  || 'Phone', contact.phone]);
+    if (contact.phone2) phoneRows.push([contact.phone2_label || 'Phone 2', contact.phone2]);
+    if (contact.phone3) phoneRows.push([contact.phone3_label || 'Phone 3', contact.phone3]);
     const rows = [
       contact.firm        ? ['Firm',    contact.firm]         : null,
       contact.title       ? ['Title',   contact.title]        : null,
       contact.email       ? ['Email',   `<a href="mailto:${escapeHtml(contact.email)}" style="color:var(--accent);">${escapeHtml(contact.email)}</a>`] : null,
-      contact.phone       ? ['Phone',   contact.phone]        : null,
+      ...phoneRows.map(([lbl, num]) => [lbl, `<a href="tel:${escapeHtml(num)}" style="font-family:var(--font-mono);">${escapeHtml(num)}</a>`]),
+      contact.address     ? ['Address', contact.address.replace(/\n/g,'<br>')]  : null,
       contact.website     ? ['Website', `<a href="${escapeHtml(contact.website)}" target="_blank" style="color:var(--accent);">${escapeHtml(contact.website)}</a>`] : null,
-      contact.address     ? ['Address', contact.address]      : null,
       contact.notes       ? ['Notes',   contact.notes]        : null,
       contact.active===false ? ['Status','<span style="color:var(--danger);">Inactive</span>'] : null,
     ].filter(Boolean);
@@ -11315,6 +11358,11 @@ function openContactModal(contactId) {
     document.getElementById('ce-firm').value = '';
     document.getElementById('ce-email').value = '';
     document.getElementById('ce-phone').value = '';
+    document.getElementById('ce-phone-label').value = 'Office';
+    document.getElementById('ce-phone2').value = '';
+    document.getElementById('ce-phone2-label').value = 'Cell';
+    document.getElementById('ce-phone3').value = '';
+    document.getElementById('ce-phone3-label').value = 'Fax';
     document.getElementById('ce-address').value = '';
     document.getElementById('ce-website').value = '';
     document.getElementById('ce-notes').value = '';
@@ -11322,14 +11370,19 @@ function openContactModal(contactId) {
   } else {
     const c = allContacts.find(x => x.id === contactId);
     if (!c) return;
-    document.getElementById('ce-name').value    = c.name    || '';
-    document.getElementById('ce-firm').value    = c.firm    || '';
-    document.getElementById('ce-email').value   = c.email   || '';
-    document.getElementById('ce-phone').value   = c.phone   || '';
-    document.getElementById('ce-address').value = c.address || '';
-    document.getElementById('ce-website').value = c.website || '';
-    document.getElementById('ce-notes').value   = c.notes   || '';
-    document.getElementById('ce-type').value    = c.contact_type || 'Other';
+    document.getElementById('ce-name').value         = c.name         || '';
+    document.getElementById('ce-firm').value         = c.firm         || '';
+    document.getElementById('ce-email').value        = c.email        || '';
+    document.getElementById('ce-phone').value        = c.phone        || '';
+    document.getElementById('ce-phone-label').value  = c.phone_label  || 'Office';
+    document.getElementById('ce-phone2').value       = c.phone2       || '';
+    document.getElementById('ce-phone2-label').value = c.phone2_label || 'Cell';
+    document.getElementById('ce-phone3').value       = c.phone3       || '';
+    document.getElementById('ce-phone3-label').value = c.phone3_label || 'Fax';
+    document.getElementById('ce-address').value      = c.address      || '';
+    document.getElementById('ce-website').value      = c.website      || '';
+    document.getElementById('ce-notes').value        = c.notes        || '';
+    document.getElementById('ce-type').value         = c.contact_type || 'Other';
   }
   document.getElementById('modal-contact-edit').classList.add('open');
   setTimeout(() => document.getElementById('ce-name').focus(), 30);
@@ -11344,6 +11397,11 @@ async function saveDirectoryContact() {
     firm:         norm(document.getElementById('ce-firm').value),
     email:        norm(document.getElementById('ce-email').value),
     phone:        norm(document.getElementById('ce-phone').value),
+    phone_label:  norm(document.getElementById('ce-phone-label').value) || 'Office',
+    phone2:       norm(document.getElementById('ce-phone2').value),
+    phone2_label: norm(document.getElementById('ce-phone2-label').value) || 'Cell',
+    phone3:       norm(document.getElementById('ce-phone3').value),
+    phone3_label: norm(document.getElementById('ce-phone3-label').value) || 'Fax',
     address:      norm(document.getElementById('ce-address').value),
     website:      norm(document.getElementById('ce-website').value),
     notes:        norm(document.getElementById('ce-notes').value),
@@ -11417,9 +11475,12 @@ async function openAssignContact() {
   document.getElementById('ac-results').innerHTML = '';
   document.getElementById('ac-selected-contact').style.display = 'none';
   document.getElementById('ac-new-contact-form').style.display = 'none';
-  ['ac-first-name','ac-middle-name','ac-last-name','ac-suffix','ac-name','ac-firm','ac-title','ac-email','ac-phone'].forEach(id => {
+  ['ac-first-name','ac-middle-name','ac-last-name','ac-suffix','ac-name','ac-firm','ac-title','ac-email','ac-phone','ac-phone2','ac-phone3','ac-address'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
+  const phLabel = document.getElementById('ac-phone-label');  if (phLabel)  phLabel.value  = 'Office';
+  const ph2Label = document.getElementById('ac-phone2-label'); if (ph2Label) ph2Label.value = 'Cell';
+  const ph3Label = document.getElementById('ac-phone3-label'); if (ph3Label) ph3Label.value = 'Fax';
   toggleAcFirmTitle();
   // Always reload client contacts so search is never stale
   await loadAllClientContacts();
@@ -11550,7 +11611,7 @@ function clearContactSelection() {
   document.getElementById('ac-new-contact-form').style.display = '';
   document.getElementById('ac-search').value = '';
   document.getElementById('ac-results').style.display = 'none';
-  ['ac-first-name','ac-middle-name','ac-last-name','ac-suffix','ac-name','ac-firm','ac-title','ac-email','ac-phone'].forEach(id => {
+  ['ac-first-name','ac-middle-name','ac-last-name','ac-suffix','ac-name','ac-firm','ac-title','ac-email','ac-phone','ac-phone2','ac-phone3','ac-address'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
 }
@@ -11609,6 +11670,12 @@ async function saveContactAssignment() {
       title:        norm(document.getElementById('ac-title').value),
       email:        norm(document.getElementById('ac-email').value),
       phone:        norm(document.getElementById('ac-phone').value),
+      phone_label:  norm(document.getElementById('ac-phone-label').value) || 'Office',
+      phone2:       norm(document.getElementById('ac-phone2').value),
+      phone2_label: norm(document.getElementById('ac-phone2-label').value) || 'Cell',
+      phone3:       norm(document.getElementById('ac-phone3').value),
+      phone3_label: norm(document.getElementById('ac-phone3-label').value) || 'Fax',
+      address:      norm(document.getElementById('ac-address').value),
       contact_type: document.getElementById('ac-type').value || 'Other',
     };
     const { error: insErr } = await db.from('contacts').insert(newPayload);
