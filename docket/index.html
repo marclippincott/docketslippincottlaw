@@ -2697,6 +2697,10 @@ ENTRY [MM/DD/YY] [INITIALS]: [status note]</pre>
           <div class="form-group"><label>Cause No.</label><input id="ec-cause_no" placeholder="e.g. 2632B" style="font-family:var(--font-mono);" /></div>
           <div class="form-group"></div>
         </div>
+        <div class="form-row">
+          <div class="form-group"><label>Court</label><input id="ec-court" placeholder="e.g. 198th Judicial District" /></div>
+          <div class="form-group"><label>County</label><input id="ec-county" placeholder="e.g. Kerr County" /></div>
+        </div>
       <div class="form-row">
         <div class="form-group"><label>Assignor</label><input id="ec-assignor" placeholder="VyStar CU" /></div>
         <div class="form-group"><label>Rep</label><select id="ec-rep_name" data-rep-select data-rep-blank="none" onchange="handleRepSelectChange(this);"></select></div>
@@ -6225,6 +6229,8 @@ async function openDetail(id, opts) {
           <div class="field-row"><span class="field-label">Our file #</span><span class="field-value" style="font-family:var(--font-mono);">${escapeHtml(m.our_file_no||'—')}</span></div>
           <div class="field-row"><span class="field-label">Client file #</span><span class="field-value" style="font-family:var(--font-mono);">${escapeHtml(m.client_file_no||'—')}</span></div>
           <div class="field-row"><span class="field-label">Cause No.</span><span class="field-value" style="font-family:var(--font-mono);">${escapeHtml(m.cause_no||'—')}</span></div>
+          <div class="field-row"><span class="field-label">Court</span><span class="field-value">${escapeHtml(m.court||'—')}</span></div>
+          <div class="field-row"><span class="field-label">County</span><span class="field-value">${escapeHtml(m.county||'—')}</span></div>
           <div class="field-row"><span class="field-label">Assignor</span><span class="field-value">${escapeHtml(m.assignor||'—')}</span></div>
           <div class="field-row" style="align-items:flex-start;">
             <span class="field-label" style="padding-top:2px;">Addresses</span>
@@ -6792,7 +6798,8 @@ async function generateDocWord(docType) {
                : 'rfa';
 
   const causeNo    = document.getElementById('doc-' + prefix + '-causeno')?.value.trim() || m.cause_no || '';
-  const court      = document.getElementById('doc-' + prefix + '-court')?.value.trim() || '';
+  const courtField = document.getElementById('doc-' + prefix + '-court')?.value.trim();
+  const court      = courtField || (m.court && m.county ? m.court + ', ' + m.county : m.court || m.county || '');
   const svcDateRaw = document.getElementById('doc-' + prefix + '-date')?.value || '';
 
   if (!causeNo) { toast('Enter the Cause No. before generating', 'error'); return; }
@@ -7427,10 +7434,17 @@ async function _prefillDocumentTab() {
   const m = allMatters.find(x => x.id === currentMatterId);
   if (!m) return;
   const causeNo = m.cause_no || '';
-  // Auto-fill Cause No into all discovery/disclosure forms
+  // Auto-fill Cause No + Court into all discovery/disclosure forms
+  const court = m.court || '';
+  const county = m.county || '';
+  const courtFull = court && county ? court + ', ' + county : court || county;
   ['doc-disc-causeno','doc-rogs-causeno','doc-rfp-causeno','doc-rfa-causeno'].forEach(id => {
     const el = document.getElementById(id);
     if (el && !el.value) el.value = causeNo;
+  });
+  ['doc-disc-court','doc-rogs-court','doc-rfp-court','doc-rfa-court'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el.value) el.value = courtFull;
   });
   // Auto-fill today's date into service date fields if blank
   const today = new Date().toISOString().split('T')[0];
@@ -11912,7 +11926,7 @@ const EDIT_CASE_FIELDS = [
   'debtor_address', 'mh_address', 'debtor_phone', 'debtor_email', 'co_debtor_address', 'client_notes',
   // Loan / borrower
   'dob', 'ssn_last4', 'co_dob', 'co_ssn_last4', 'co_debtor_phone', 'co_debtor_email',
-  'cause_no', 'loan_account_no', 'loan_type', 'date_of_loan', 'original_amf',
+  'cause_no', 'court', 'county', 'loan_account_no', 'loan_type', 'date_of_loan', 'original_amf',
   'mhp_name', 'reason_for_default', 'requested_by', 'requested_date',
   'legal_description',
   // Home
