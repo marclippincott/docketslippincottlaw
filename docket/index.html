@@ -12761,10 +12761,11 @@ function renderLarFieldGroup(title, fields, values) {
     </div>`;
 }
 
-function populateLarReviewForm() {
+async function populateLarReviewForm() {
   const state = window._larReviewState;
   if (!state) return;
-  // Show Our File # + Box Folder ID at the top when creating a new matter from LAR
+
+  // File Setup section — only for brand-new matters
   let fileSetupHtml = '';
   if (state.mode !== 'edit' && !state.match_matter_id) {
     fileSetupHtml = `
@@ -12785,7 +12786,6 @@ function populateLarReviewForm() {
           </div>
         </div>
       </div>`;
-    // Pre-fill if state already has values (e.g. server matched them)
     setTimeout(() => {
       const fn = document.getElementById('lar-rev-our_file_no');
       const bx = document.getElementById('lar-rev-box_folder_id');
@@ -12793,41 +12793,129 @@ function populateLarReviewForm() {
       if (bx && state.box_folder_id) bx.value = state.box_folder_id;
     }, 0);
   }
+
+  // If updating an existing matter — show diff/compare view
+  if (state.match_matter_id || state.matter_id) {
+    const matterId = state.match_matter_id || state.matter_id;
+    const { data: current } = await db.from('matters').select('*').eq('id', matterId).single();
+    window._larCurrentMatter = current || {};
+    const fin = state.financials || {};
+
+    // Format a value for display
+    const fmt = (key, val) => {
+      if (val == null || val === '') return '';
+      return String(val);
+    };
+
+    // Build diff rows for matter fields
+    const buildDiffRows = (fields, values) => {
+      const allFields = [...fields];
+      // Group by group property
+      const byGroup = {};
+      allFields.forEach(f => {
+        if (!byGroup[f.group]) byGroup[f.group] = [];
+        byGroup[f.group].push(f);
+      });
+
+      return Object.entries(byGroup).map(([gName, gFields]) => {
+        const rows = gFields.map(f => {
+          const larVal  = values[f.key];
+          const dbVal   = (current || {})[f.key];
+          const larStr  = fmt(f.key, larVal);
+          const dbStr   = fmt(f.key, dbVal);
+          const hasLar  = larStr !== '';
+          const isEmpty = dbStr === '' || dbStr == null;
+          const isDiff  = hasLar && dbStr !== larStr;
+          const isNew   = hasLar && isEmpty;
+
+          // Skip if LAR has nothing to offer
+          if (!hasLar) return '';
+
+          const statusColor = isNew ? 'rgba(45,106,63,0.08)' : isDiff ? 'rgba(176,140,58,0.10)' : 'rgba(200,191,170,0.2)';
+          const statusBorder = isNew ? '2px solid rgba(45,106,63,0.3)' : isDiff ? '2px solid rgba(176,140,58,0.4)' : '1px solid var(--rule)';
+          const statusIcon   = isNew ? '&#x2795;' : isDiff ? '&#x21C4;' : '&#x2713;';
+          const statusTip    = isNew ? 'New value (DB is empty)' : isDiff ? 'Different from DB' : 'Same as DB';
+          const checked      = (isNew || isDiff) ? 'checked' : '';
+
+          // Editable input for LAR value
+          const monoStyle = f.mono ? 'font-family:var(--font-mono);' : '';
+          let input = '';
+          if (f.type === 'textarea') {
+            input = `<textarea id="lar-rev-${f.key}" rows="2" style="width:100%;${monoStyle}font-size:11px;padding:4px 6px;border:1px solid var(--rule);">${escapeHtml(larStr)}</textarea>`;
+          } else if (f.type === 'select') {
+            const optsHtml = (f.options||[]).map(o => `<option value="${escapeHtml(o)}"${String(larVal??'')===String(o)?' selected':''}>${o===''?'— select —':escapeHtml(o)}</option>`).join('');
+            input = `<select id="lar-rev-${f.key}" style="width:100%;font-size:11px;padding:4px 6px;border:1px solid var(--rule);">${optsHtml}</select>`;
+          } else if (f.type === 'date') {
+            input = `<input type="date" id="lar-rev-${f.key}" value="${escapeHtml(larStr)}" style="width:100%;${monoStyle}font-size:11px;padding:4px 6px;border:1px solid var(--rule);" />`;
+          } else if (f.type === 'number-money') {
+            const nv = larVal == null ? '' : Number(larVal).toFixed(2);
+            input = `<input type="number" step="0.01" id="lar-rev-${f.key}" value="${nv}" style="width:100%;font-family:var(--font-mono);font-size:11px;padding:4px 6px;border:1px solid var(--rule);" />`;
+          } else if (f.type === 'number-int') {
+            input = `<input type="number" step="1" id="lar-rev-${f.key}" value="${escapeHtml(larStr)}" style="width:100%;${monoStyle}font-size:11px;padding:4px 6px;border:1px solid var(--rule);" />`;
+          } else {
+            const attrs = [f.placeholder?`placeholder="${escapeHtml(f.placeholder)}"`:'',f.maxlength?`maxlength="${f.maxlength}"`:''].filter(Boolean).join(' ');
+            input = `<input type="text" id="lar-rev-${f.key}" value="${escapeHtml(larStr)}" ${attrs} style="width:100%;${monoStyle}font-size:11px;padding:4px 6px;border:1px solid var(--rule);" />`;
+          }
+
+          return `<tr style="background:${statusColor};border-left:${statusBorder};">
+            <td style="padding:6px 8px;font-size:11px;color:var(--muted);white-space:nowrap;vertical-align:middle;">
+              <input type="checkbox" class="lar-diff-cb" data-key="${f.key}" ${checked} style="margin-right:6px;" title="${statusTip}" />
+              <span title="${statusTip}">${statusIcon}</span>
+              ${escapeHtml(f.label)}
+            </td>
+            <td style="padding:6px 8px;font-size:11px;font-family:${f.mono?'var(--font-mono)':'inherit'};color:var(--muted);vertical-align:middle;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(dbStr)}">${escapeHtml(dbStr||'—')}</td>
+            <td style="padding:4px 8px;vertical-align:middle;min-width:160px;">${input}</td>
+          </tr>`;
+        }).join('');
+
+        if (!rows.replace(/\s/g,'')) return '';
+        return `<tr><td colspan="3" style="padding:8px 8px 2px;font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;border-top:1px solid var(--rule);">${escapeHtml(gName)}</td></tr>${rows}`;
+      }).join('');
+    };
+
+    const matterRows    = buildDiffRows(LAR_MATTER_FIELDS,    state.matter    || {});
+    const financialRows = buildDiffRows(LAR_FINANCIAL_FIELDS, state.financials || {});
+
+    const legend = `<div style="display:flex;gap:16px;margin-bottom:10px;font-size:11px;flex-wrap:wrap;align-items:center;">
+      <span style="color:var(--muted);">Legend:</span>
+      <span>&#x2795; <span style="color:#2d6a3f;">New</span> (DB empty)</span>
+      <span>&#x21C4; <span style="color:#7a5200;">Changed</span> (differs from DB)</span>
+      <span>&#x2713; Same as DB</span>
+      <span style="margin-left:auto;display:flex;gap:8px;">
+        <button class="btn btn-sm" onclick="_larSelectAll(true)" style="font-size:10px;padding:2px 8px;">Select all</button>
+        <button class="btn btn-sm" onclick="_larSelectAll(false)" style="font-size:10px;padding:2px 8px;">Deselect all</button>
+      </span>
+    </div>`;
+
+    const table = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="background:var(--cream);">
+          <th style="padding:6px 8px;text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;">Field</th>
+          <th style="padding:6px 8px;text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;">Current (DB)</th>
+          <th style="padding:6px 8px;text-align:left;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;">From LAR (editable)</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${matterRows}
+        ${financialRows ? `<tr><td colspan="3" style="padding:8px 8px 2px;font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;border-top:2px solid var(--rule);">Financial Snapshot</td></tr>${financialRows}` : ''}
+      </tbody>
+    </table>`;
+
+    document.getElementById('lar-review-form').innerHTML = fileSetupHtml + legend + table;
+    return;
+  }
+
+  // Standard new-matter form (no existing matter to compare against)
   const html = fileSetupHtml
              + renderLarFieldGroup('Matter', LAR_MATTER_FIELDS, state.matter || {})
              + renderLarFieldGroup('Financial snapshot', LAR_FINANCIAL_FIELDS, state.financials || {});
   document.getElementById('lar-review-form').innerHTML = html;
 }
 
-function readLarReviewForm() {
-  const matter = {};
-  for (const f of LAR_MATTER_FIELDS) {
-    const el = document.getElementById(`lar-rev-${f.key}`);
-    if (!el) continue;
-    let v = el.value;
-    if (typeof v === 'string') v = v.trim();
-    if (v === '') v = null;
-    if (v != null && (f.type === 'number-money' || f.type === 'number-int')) {
-      v = Number(v);
-      if (isNaN(v)) v = null;
-    }
-    matter[f.key] = v;
-  }
-  const financials = {};
-  for (const f of LAR_FINANCIAL_FIELDS) {
-    const el = document.getElementById(`lar-rev-${f.key}`);
-    if (!el) continue;
-    let v = el.value;
-    if (typeof v === 'string') v = v.trim();
-    if (v === '') v = null;
-    if (v != null && (f.type === 'number-money' || f.type === 'number-int')) {
-      v = Number(v);
-      if (isNaN(v)) v = null;
-    }
-    financials[f.key] = v;
-  }
-  return { matter, financials };
-}
+window._larSelectAll = function(checked) {
+  document.querySelectorAll('.lar-diff-cb').forEach(cb => cb.checked = checked);
+};
+
 
 function openLarReview(state) {
   window._larReviewState = state;
@@ -12838,12 +12926,55 @@ function openLarReview(state) {
       ? 'Edit any field below. Fields left blank will be cleared (set to NULL) on the matter.'
       : 'Review the data extracted from the LAR. Edit anything that\'s wrong, fill in blanks, then click Save.';
   populateLarReviewForm();
+  // populateLarReviewForm is async but we don't await — modal opens immediately,
+  // diff table populates within the same tick for cached matters
   document.getElementById('modal-lar-review').classList.add('open');
 }
 
 function closeLarReview() {
   document.getElementById('modal-lar-review').classList.remove('open');
   delete window._larReviewState;
+}
+
+function readLarReviewForm() {
+  const state = window._larReviewState || {};
+  const isDiffMode = !!(state.match_matter_id || state.matter_id) && state.mode !== 'edit';
+  const matter = {};
+  const financials = {};
+
+  // In diff mode: only include fields where the checkbox is checked
+  // In standard mode: include all filled fields
+  const checkedKeys = new Set();
+  if (isDiffMode) {
+    document.querySelectorAll('.lar-diff-cb:checked').forEach(cb => checkedKeys.add(cb.dataset.key));
+  }
+
+  const readField = (f, target) => {
+    const el = document.getElementById('lar-rev-' + f.key);
+    if (!el) return;
+    // In diff mode skip unchecked fields
+    if (isDiffMode && !checkedKeys.has(f.key)) return;
+    let val = null;
+    if (f.type === 'number-money' || f.type === 'number-int') {
+      val = el.value === '' ? null : Number(el.value);
+    } else if (f.type === 'date') {
+      val = el.value === '' ? null : el.value;
+    } else {
+      val = el.value === '' ? null : el.value;
+    }
+    target[f.key] = val;
+  };
+
+  LAR_MATTER_FIELDS.forEach(f => readField(f, matter));
+  LAR_FINANCIAL_FIELDS.forEach(f => readField(f, financials));
+
+  // Also read our_file_no and box_folder_id from File Setup section if present
+  const fnEl = document.getElementById('lar-rev-our_file_no');
+  const bxEl = document.getElementById('lar-rev-box_folder_id');
+  if (fnEl && fnEl.value.trim()) state.our_file_no = fnEl.value.trim();
+  if (bxEl && bxEl.value.trim()) state.box_folder_id = bxEl.value.trim();
+
+  return { matter, financials };
 }
 
 async function saveLarReview() {
@@ -12892,37 +13023,75 @@ async function saveLarReview() {
       const matterId = state.match_matter_id || state.matter_id || null;
 
       if (matterId) {
-        // Update existing matter directly — split debtor_name into structured fields
-        const matterUpdate = { ...edited.matter };
-        // If last/first came from the split fields, synthesize debtor_name
-        if (matterUpdate.debtor_last_name) {
-          matterUpdate.debtor_name = matterUpdate.debtor_first_name
-            ? `${matterUpdate.debtor_last_name}, ${matterUpdate.debtor_first_name}${matterUpdate.debtor_middle_name ? ' ' + matterUpdate.debtor_middle_name : ''}`
-            : matterUpdate.debtor_last_name;
-          matterUpdate.debtor_name_full = [matterUpdate.debtor_first_name, matterUpdate.debtor_middle_name, matterUpdate.debtor_last_name].filter(Boolean).join(' ');
-          matterUpdate.debtor_name_needs_review = false;
-        } else if (matterUpdate.debtor_name && !matterUpdate.debtor_last_name) {
-          const parts = matterUpdate.debtor_name.split(',').map(s => s.trim());
-          matterUpdate.debtor_last_name  = parts[0] || '';
+        // Fetch current DB state so we only fill in null fields (never overwrite existing data)
+        const { data: currentMatter, error: fetchErr } = await db.from('matters')
+          .select('*').eq('id', matterId).single();
+        if (fetchErr) throw new Error('Could not fetch existing matter: ' + fetchErr.message);
+
+        // Build the update — only include LAR fields where DB value is currently null/empty
+        // Fields that should always overwrite (structural): debtor name parts (only if DB is null)
+        // Fields that should NEVER overwrite: our_file_no, status, client_id, rep, box_folder_id
+        const NEVER_OVERWRITE = new Set([
+          'our_file_no','status','client_id','rep','box_folder_id','created_at',
+          'deleted_at','debtor_name_needs_review','client_file_no'
+        ]);
+        const larFields = { ...edited.matter };
+
+        // Synthesize debtor_name from parts if provided
+        if (larFields.debtor_last_name) {
+          larFields.debtor_name = larFields.debtor_first_name
+            ? `${larFields.debtor_last_name}, ${larFields.debtor_first_name}${larFields.debtor_middle_name ? ' ' + larFields.debtor_middle_name : ''}`
+            : larFields.debtor_last_name;
+          larFields.debtor_name_full = [larFields.debtor_first_name, larFields.debtor_middle_name, larFields.debtor_last_name].filter(Boolean).join(' ');
+          larFields.debtor_name_needs_review = false;
+        } else if (larFields.debtor_name && !larFields.debtor_last_name) {
+          const parts = larFields.debtor_name.split(',').map(s => s.trim());
+          larFields.debtor_last_name  = parts[0] || '';
           const fm = (parts[1] || '').trim().split(/\s+/);
-          matterUpdate.debtor_first_name  = fm[0] || '';
-          matterUpdate.debtor_middle_name = fm.slice(1).join(' ') || null;
-          matterUpdate.debtor_name_full   = [matterUpdate.debtor_first_name, matterUpdate.debtor_middle_name, matterUpdate.debtor_last_name].filter(Boolean).join(' ');
-          matterUpdate.debtor_name_needs_review = false;
+          larFields.debtor_first_name  = fm[0] || '';
+          larFields.debtor_middle_name = fm.slice(1).join(' ') || null;
+          larFields.debtor_name_full   = [larFields.debtor_first_name, larFields.debtor_middle_name, larFields.debtor_last_name].filter(Boolean).join(' ');
+          larFields.debtor_name_needs_review = false;
         }
-        if (matterUpdate.co_debtor_last_name) {
-          matterUpdate.co_debtor_name = matterUpdate.co_debtor_first_name
-            ? `${matterUpdate.co_debtor_last_name}, ${matterUpdate.co_debtor_first_name}${matterUpdate.co_debtor_middle_name ? ' ' + matterUpdate.co_debtor_middle_name : ''}`
-            : matterUpdate.co_debtor_last_name;
-        } else if (matterUpdate.co_debtor_name && !matterUpdate.co_debtor_last_name) {
-          const parts = matterUpdate.co_debtor_name.split(',').map(s => s.trim());
-          matterUpdate.co_debtor_last_name  = parts[0] || '';
+        if (larFields.co_debtor_last_name) {
+          larFields.co_debtor_name = larFields.co_debtor_first_name
+            ? `${larFields.co_debtor_last_name}, ${larFields.co_debtor_first_name}${larFields.co_debtor_middle_name ? ' ' + larFields.co_debtor_middle_name : ''}`
+            : larFields.co_debtor_last_name;
+        } else if (larFields.co_debtor_name && !larFields.co_debtor_last_name) {
+          const parts = larFields.co_debtor_name.split(',').map(s => s.trim());
+          larFields.co_debtor_last_name  = parts[0] || '';
           const fm = (parts[1] || '').trim().split(/\s+/);
-          matterUpdate.co_debtor_first_name  = fm[0] || '';
-          matterUpdate.co_debtor_middle_name = fm.slice(1).join(' ') || null;
+          larFields.co_debtor_first_name  = fm[0] || '';
+          larFields.co_debtor_middle_name = fm.slice(1).join(' ') || null;
         }
-        const { error } = await db.from('matters').update(matterUpdate).eq('id', matterId);
-        if (error) throw new Error(error.message);
+
+        // Build the update payload
+        // In diff mode: user already selected which fields to include via checkboxes —
+        // larFields only contains checked fields (readLarReviewForm filtered them).
+        // We still never overwrite NEVER_OVERWRITE fields.
+        // For unchecked fields in diff mode, we fall back to null-only behavior.
+        const isDiffMode = !!(state.match_matter_id) && state.mode !== 'edit';
+        const matterUpdate = {};
+        for (const [key, val] of Object.entries(larFields)) {
+          if (NEVER_OVERWRITE.has(key)) continue;
+          if (val === null || val === undefined || val === '') continue;
+          if (isDiffMode) {
+            // User explicitly checked this field — allow overwrite
+            matterUpdate[key] = val;
+          } else {
+            // Standard import — only fill null fields
+            const existing = currentMatter[key];
+            if (existing === null || existing === undefined || existing === '') {
+              matterUpdate[key] = val;
+            }
+          }
+        }
+
+        // Only update if there's actually something new to add
+        if (Object.keys(matterUpdate).length > 0) {
+          const { error } = await db.from('matters').update(matterUpdate).eq('id', matterId);
+          if (error) throw new Error(error.message);
+        }
 
         // Save financial snapshot if any financials filled in
         const finVals = edited.financials;
