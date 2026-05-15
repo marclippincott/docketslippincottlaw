@@ -2643,7 +2643,7 @@ ENTRY [MM/DD/YY] [INITIALS]: [status note]</pre>
   <div class="modal" style="width:560px;">
     <div class="modal-head"><h3>Search syntax</h3><button class="btn btn-sm" onclick="closeModal('modal-search-help')">✕</button></div>
     <div class="modal-body" style="font-size:12px;line-height:1.55;">
-      <p>The search box supports Lexis/Westlaw-style boolean syntax. Searches run across debtor names, file numbers, addresses, loan accounts, MHP names, reasons for default, client &amp; counsel notes, counsel info, and <strong>all journal entry text</strong>.</p>
+      <p>The search box supports Lexis/Westlaw-style boolean syntax. Searches run across debtor names, file numbers, addresses, loan accounts, MHP names, reasons for default, client &amp; counsel notes, counsel info, <strong>all journal entry text</strong>, and <strong>category labels</strong> (e.g. searching "summary judgment" finds matters with MSJ entries).</p>
 
       <div style="margin:14px 0 6px;font-weight:600;color:var(--accent);">Operators</div>
       <table style="width:100%;border-collapse:collapse;font-size:11px;">
@@ -4897,6 +4897,10 @@ async function loadEntries() {
     const parts = [];
     if (e.status_note) parts.push(e.status_note);
     if (e.category)    parts.push(e.category);
+    // Also add the label for this category so users can search by full description
+    // e.g. searching "summary judgment" finds entries with category "MSJ Filed"
+    const catRow = _entryCategoryRowsRaw?.find(c => c.name === e.category);
+    if (catRow?.label) parts.push(catRow.label);
     if (Array.isArray(e.tags) && e.tags.length) parts.push(e.tags.join(' '));
     if (!parts.length) continue;
     entriesByMatter[id] = (entriesByMatter[id] || '') + ' ' + parts.join(' ').toLowerCase();
@@ -4924,6 +4928,8 @@ function rebuildSearchIndex() {
       m.requested_by,
       // contact info now in matter_contacts table — searched separately
       m.last_action_summary,
+      // Court / case fields
+      m.cause_no, m.court, m.county,
       // Milestone date columns — searchable as ISO dates
       m.nod_sent_date, m.military_check_date, m.bk_check_date,
     ].filter(v => v != null && v !== '').map(v => String(v).toLowerCase());
