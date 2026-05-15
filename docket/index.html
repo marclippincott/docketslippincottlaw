@@ -6366,19 +6366,38 @@ async function openDetail(id, opts) {
             <label style="font-size:10px;">Past due amount <span style="color:var(--danger);">*</span></label>
             <input id="doc-demand-pastdue" type="text" placeholder="e.g. 3,913.36" style="font-family:var(--font-mono);font-size:12px;" />
           </div>
+          <div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:10px 0 6px;">Primary debtor</div>
           <div class="form-group" style="margin-bottom:8px;">
-            <label style="font-size:10px;">CMRR # (primary address)</label>
+            <label style="font-size:10px;">CMRR #</label>
             <input id="doc-demand-cmrr1" type="text" placeholder="9589 0710 5270 1412 7985 44" style="font-family:var(--font-mono);font-size:11px;" />
           </div>
           <div class="form-group" style="margin-bottom:8px;">
-            <label style="font-size:10px;">CMRR # (alternate address, if any)</label>
-            <input id="doc-demand-cmrr2" type="text" placeholder="optional" style="font-family:var(--font-mono);font-size:11px;" />
-          </div>
-          <div class="form-group" style="margin-bottom:12px;">
-            <label style="font-size:10px;">Alternate address (if different from debtor address)</label>
+            <label style="font-size:10px;">Alternate address (if different from debtor address on file)</label>
             <input id="doc-demand-altaddr" type="text" placeholder="e.g. P.O. Box 626, Comfort, TX 78013" style="font-size:11px;" />
           </div>
-          <button class="btn btn-primary btn-sm" style="width:100%;" onclick="generateDocument('demand')">Generate PDF &#x2197;</button>
+          <div class="form-group" style="margin-bottom:8px;">
+            <label style="font-size:10px;">CMRR # (alternate address)</label>
+            <input id="doc-demand-cmrr2" type="text" placeholder="optional — only if sending to alternate address too" style="font-family:var(--font-mono);font-size:11px;" />
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;margin:10px 0 6px;">
+            <input type="checkbox" id="doc-demand-include-codebtor" onchange="document.getElementById('doc-demand-codebtor-fields').style.display=this.checked?'':'none'" />
+            <label for="doc-demand-include-codebtor" style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;cursor:pointer;">Include co-debtor</label>
+          </div>
+          <div id="doc-demand-codebtor-fields" style="display:none;">
+            <div class="form-group" style="margin-bottom:8px;">
+              <label style="font-size:10px;">Co-debtor CMRR #</label>
+              <input id="doc-demand-cmrr-co" type="text" placeholder="9589 0710 5270 1412 7985 55" style="font-family:var(--font-mono);font-size:11px;" />
+            </div>
+            <div class="form-group" style="margin-bottom:8px;">
+              <label style="font-size:10px;">Co-debtor address <span style="font-weight:400;color:var(--muted);">(if different from primary debtor)</span></label>
+              <input id="doc-demand-coaddr" type="text" placeholder="leave blank if same as primary debtor" style="font-size:11px;" />
+            </div>
+            <div class="form-group" style="margin-bottom:8px;">
+              <label style="font-size:10px;">Co-debtor alt address CMRR # (if any)</label>
+              <input id="doc-demand-cmrr-co2" type="text" placeholder="optional" style="font-family:var(--font-mono);font-size:11px;" />
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" style="width:100%;margin-top:8px;" onclick="generateDocument('demand')">Generate PDF &#x2197;</button>
         </div>
 
         <!-- Initial Disclosures -->
@@ -6607,61 +6626,224 @@ async function generateDocument(type) {
   };
 
   const CSS = `
-    body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; margin: 1in; color: #000; }
-    p { margin: 0 0 12pt; }
-    h2 { font-size: 12pt; text-align: center; text-transform: uppercase; margin: 0 0 12pt; }
-    .indent { text-indent: 0.5in; }
-    @media print { body { margin: 1in; } }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 12pt;
+      line-height: 2;
+      margin: 0;
+      color: #000;
+      background: #fff;
+    }
+    #doc-wrap {
+      max-width: 8.5in;
+      margin: 0 auto;
+      padding: 1in 1in 1in 1.5in;
+    }
+    p { margin: 0 0 0 0; }
+    p + p { margin-top: 12pt; }
+    .para-body { text-indent: 0.5in; }
+    h2 {
+      font-size: 12pt;
+      text-align: center;
+      text-transform: uppercase;
+      font-weight: bold;
+      margin: 0 0 12pt;
+      line-height: 1.5;
+    }
+    .letterhead-wrap {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 24pt;
+      line-height: 1.4;
+    }
+    .letterhead-addr { font-size: 10pt; }
+    .letterhead-name { font-size: 12pt; font-weight: bold; text-align: right; }
+    .re-block { margin: 12pt 0; }
+    .re-block .re-label { font-weight: bold; }
+    .addr-block { margin-bottom: 24pt; display: flex; gap: 60pt; }
+    .addr-col { flex: 1; line-height: 1.5; font-size: 11pt; }
+    .via-label { font-weight: bold; font-size: 10pt; }
+    .sig-block { margin-top: 36pt; }
+    .sig-line { margin-top: 48pt; border-top: 1px solid #000; width: 260pt; }
+    .cc-block { margin-top: 12pt; }
+    .fdcpa { margin-top: 36pt; border-top: 2pt solid #000; padding-top: 12pt; font-size: 11pt; line-height: 1.5; }
+    .fdcpa-title { font-weight: bold; margin-bottom: 8pt; }
+    /* Caption table */
+    .caption-table { width: 100%; border-collapse: collapse; margin-bottom: 24pt; }
+    .caption-left { width: 50%; padding: 2pt 0; vertical-align: top; line-height: 1.8; }
+    .caption-right { width: 50%; padding: 2pt 12pt; vertical-align: top; border-left: 2pt solid #000; line-height: 1.8; }
+    .caption-right .cause-no { font-weight: bold; margin-top: 8pt; }
+    .sec-mark { font-family: 'Times New Roman', serif; }
+    /* Discovery */
+    .discovery-request { margin-bottom: 14pt; }
+    .discovery-request .req-label { font-weight: bold; }
+    .response-line { margin-top: 8pt; margin-left: 0.5in; }
+    /* Print bar */
+    #print-bar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: #1a1612;
+      color: #f5f0e8;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      z-index: 999;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+    #print-bar button {
+      background: #8b2500;
+      color: white;
+      border: none;
+      padding: 6px 16px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: Arial, sans-serif;
+    }
+    #print-bar button:hover { background: #a83000; }
+    #print-bar .close-btn {
+      background: rgba(255,255,255,0.1);
+      margin-left: auto;
+    }
+    #print-bar .close-btn:hover { background: rgba(255,255,255,0.2); }
+    @media print {
+      #print-bar { display: none !important; }
+      body { margin: 0; }
+      #doc-wrap { padding: 1in 1in 1in 1.5in; }
+      h2 { text-align: center; }
+    }
   `;
+
+  const printBar = `<div id="print-bar"><button onclick="window.print()">&#x1F5A8; Print / Save as PDF</button><span style="opacity:.6;font-size:11px;">In print dialog choose &ldquo;Save as PDF&rdquo; &mdash; set margins to Minimum</span><button class="close-btn" onclick="document.getElementById('print-bar').style.display='none'">&#x2715; Close</button></div>`;
 
   let html = '';
 
   // ── DEMAND LETTER ───────────────────────────────────────────────────────────
   if (type === 'demand') {
-    const pastDue  = document.getElementById('doc-demand-pastdue')?.value.trim() || '_______________';
-    const cmrr1    = document.getElementById('doc-demand-cmrr1')?.value.trim() || '';
-    const cmrr2    = document.getElementById('doc-demand-cmrr2')?.value.trim() || '';
-    const altAddr  = document.getElementById('doc-demand-altaddr')?.value.trim() || '';
+    const pastDue        = document.getElementById('doc-demand-pastdue')?.value.trim() || '_______________';
+    const cmrr1          = document.getElementById('doc-demand-cmrr1')?.value.trim() || '';
+    const cmrr2          = document.getElementById('doc-demand-cmrr2')?.value.trim() || '';
+    const altAddr        = document.getElementById('doc-demand-altaddr')?.value.trim() || '';
+    const inclCo         = document.getElementById('doc-demand-include-codebtor')?.checked || false;
+    const cmrrCo         = document.getElementById('doc-demand-cmrr-co')?.value.trim() || '';
+    const coAddrOverride = document.getElementById('doc-demand-coaddr')?.value.trim() || '';
+    const cmrrCo2        = document.getElementById('doc-demand-cmrr-co2')?.value.trim() || '';
 
     if (!pastDue || pastDue === '_______________') {
       toast('Enter the past due amount before generating', 'error'); return;
     }
+
+    // Co-debtor info from matter
+    const coAddr = coAddrOverride || m.co_debtor_address || debtorAddr;
+    const coName = coDebtorName || '';
 
     const deadline30 = (() => {
       const d = new Date(); d.setDate(d.getDate() + 30);
       return d.toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'});
     })();
 
-    const addrBlock = (addr, cmrr, label) => cmrr
-      ? `<div style="flex:1;"><div style="font-weight:bold;">VIA CERTIFIED MAIL</div><div>CMRR #${escapeHtml(cmrr)}</div><div>VIA REGULAR MAIL</div><div>${escapeHtml(label)}</div><div>${escapeHtml(addr)}</div></div>`
-      : '';
+    // Address block builder — each column in the header
+    const addrBlock = (name, addr, cmrr, cmrr2label) => {
+      const cmrrLine  = cmrr  ? `<p style="margin:0;">VIA CERTIFIED MAIL<br>CMRR #${escapeHtml(cmrr)}</p>` : '';
+      const cmrr2Line = cmrr2label ? `<p style="margin:0;">VIA CERTIFIED MAIL<br>CMRR #${escapeHtml(cmrr2label)}</p>` : '';
+      return `<div style="flex:1;line-height:1.5;font-size:11pt;">
+        ${cmrrLine}
+        <p style="margin:0;">VIA REGULAR MAIL</p>
+        <p style="margin:0;">${escapeHtml(name)}</p>
+        <p style="margin:0;">${escapeHtml(addr)}</p>
+        ${cmrr2Line ? '<br>' + cmrr2Line + '<p style=\"margin:0;\">VIA REGULAR MAIL</p><p style=\"margin:0;\">' + escapeHtml(name) + '</p><p style=\"margin:0;\">' + escapeHtml(altAddr || addr) + '</p>' : ''}
+      </div>`;
+    };
 
-    const addr1block = addrBlock(debtorAddr, cmrr1, debtorName);
-    const addr2block = altAddr ? addrBlock(altAddr, cmrr2, debtorName) : (cmrr2 ? addrBlock(debtorAddr, cmrr2, debtorName) : '');
+    // Primary debtor address blocks
+    const primaryBlocks = [
+      addrBlock(debtorName, debtorAddr, cmrr1, ''),
+      altAddr ? addrBlock(debtorName, altAddr, cmrr2, '') : '',
+    ].filter(Boolean).join('');
 
-    html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Demand Letter — ${escapeHtml(debtorName)}</title><style>${CSS}</style></head><body>
-${letterhead}
-<div style="margin-bottom:24px;">${today}</div>
-<div style="display:flex;gap:40px;margin-bottom:24px;">${addr1block}${addr2block}</div>
-<p><strong>Re:&nbsp;&nbsp;&nbsp;NOTICE OF DEFAULT &amp; INTENT TO ACCELERATE</strong><br>
-Creditor: ${escapeHtml(assignor)}<br>
-Servicer: ${escapeHtml(clientName)}<br>
-Contract: ${escapeHtml(noteDesc)}<br>
-Manufactured Home: ${escapeHtml(collateralFullDesc)}</p>
-<p>Dear ${debtorName.includes(',') ? 'Mr./Ms. ' + debtorName.split(',')[0].trim() : debtorName},</p>
-<p>The undersigned and this Firm represent ${escapeHtml(clientName)} as servicer for ${escapeHtml(assignor)} with respect to the above-referenced Contract and Manufactured Home.</p>
-<p>You have failed to make payments when due under the Contract, and your account is delinquent. As a result, you are in default under the terms of the Contract.</p>
-<p>As of ${today}, the past due amount owed on your account, including unpaid principal and accrued but unpaid interest, late fees and other charges authorized under the Contract, totals $${escapeHtml(pastDue)}. This amount does not include any payments which fall after ${today}, or within or after the said thirty (30) day demand period, which are and shall remain separately due. Additionally, this amount does not include collection costs you agreed to pay pursuant to the terms of the Contract. Payment of collections costs, including attorney's fees and expenses, is required to bring your account current.</p>
-<p>Accordingly, demand is hereby made for the payment of $${escapeHtml(pastDue)} plus collection costs (the "Total Amount Due") within thirty (30) days from the date of this letter.</p>
-<p>Please contact ${escapeHtml(triadContact)} to obtain information regarding collection costs and the current total amount due. Please be advised that partial payments will not be accepted, and you must contact ${escapeHtml(clientName)} to make payment arrangements.</p>
-<p>This letter constitutes formal notice to you of your default under the terms of the Contract and formal demand for immediate payment in full of the Total Amount Due. I have been instructed that, unless ${escapeHtml(clientName)} receives certified funds for the total amount due on or before thirty (30) days from the date of this letter, I am to take whatever lawful steps are necessary to protect my client's interest, including, but not limited to the filing of a lawsuit seeking a judgment for money damages and possession of the Manufactured Home. If a lawsuit is filed, you may be liable for attorney's fees, expenses, and costs of court.</p>
-<p>Furthermore, please be advised that pursuant to the terms of the Contract, upon your default, the entire unpaid principal amount of the Indebtedness may become immediately due and payable. After the expiration of the said thirty (30) day period beginning on the date of this letter, if your account is not brought current, the entire amount of the Indebtedness will be accelerated without further notice to you, and the entire unpaid principal balance, accrued but unpaid interest, late fees, and such additional authorized charges will be due in full.</p>
-<p>You are instructed to fax proof that the Manufactured Home is insured and that all taxes regarding the Manufactured Home are paid and current to ${escapeHtml(clientName)}${isTriad ? ' c/o Matthew Shelar at ' + triadFax : ''}. If payment of the Total Amount Due plus collection costs is not received by ${escapeHtml(clientName)} within thirty (30) days from the date of this letter, ${escapeHtml(clientName)} demands that you vacate and deliver possession of the Manufactured Home at its current location to ${escapeHtml(clientName)} by ${escapeHtml(deadline30)}, at 10:00 a.m., C.S.T. You are instructed to contact ${escapeHtml(clientName)} at least twenty-four (24) hours in advance.</p>
-<p>This office is attempting to collect a debt and any information obtained will be used for that purpose.</p>
-${sigBlock}
-${fdcpaDisclosure}
-<scr' + 'ipt>window.print();</scr' + 'ipt>
-</body></html>`;
+    // Co-debtor address blocks (if included)
+    const coBlocks = (inclCo && coName) ? [
+      addrBlock(coName, coAddr, cmrrCo, ''),
+      cmrrCo2 ? addrBlock(coName, coAddrOverride || coAddr, cmrrCo2, '') : '',
+    ].filter(Boolean).join('') : '';
+
+    const allAddrBlocks = primaryBlocks + coBlocks;
+
+    // Salutation — Mr./Ms. based on last name; if co-debtor included use Dear Mr./Ms. X and Mr./Ms. Y
+    const lastName1 = debtorName.includes(',') ? debtorName.split(',')[0].trim() : debtorName;
+    const lastName2 = coName && coName.includes(',') ? coName.split(',')[0].trim() : (coName || '');
+    const salutation = inclCo && coName
+      ? `Dear Mr./Ms. ${escapeHtml(lastName1)} and Mr./Ms. ${escapeHtml(lastName2)},`
+      : `Dear Mr./Ms. ${escapeHtml(lastName1)},`;
+
+    // "executed by" line includes co-debtor if present
+    const executedBy = coName ? `${escapeHtml(debtorName)} and ${escapeHtml(coName)}` : escapeHtml(debtorName);
+
+    html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Demand Letter — ${escapeHtml(debtorName)}</title><style>${CSS}
+      /* Letter-specific overrides */
+      body { line-height: 1.5; }
+      #doc-wrap { padding: 1in 1in 1in 1in; }
+      p { margin: 0; }
+      p + p { margin-top: 12pt; }
+      .re-line { margin: 12pt 0; }
+      .addr-row { display: flex; gap: 48pt; margin-bottom: 24pt; }
+      .addr-col { flex: 1; line-height: 1.5; font-size: 11pt; }
+      .via { font-size: 10pt; font-weight: bold; }
+      .sig-wrap { margin-top: 36pt; }
+      .sig-gap { height: 48pt; }
+      .cc { margin-top: 12pt; }
+    </style></head><body>${printBar}<div id="doc-wrap">
+
+    <div class="letterhead-wrap">
+      <div class="letterhead-addr" style="font-size:11pt;line-height:1.4;">11507 SUSIE ST.<br>AUSTIN, TEXAS 78704<br>(T) 512-472-2300 &nbsp; (F) 512-472-2303</div>
+      <div class="letterhead-name">MARC L. LIPPINCOTT</div>
+    </div>
+
+    <p>${today}</p>
+
+    <div class="addr-row" style="margin-top:24pt;">${allAddrBlocks}</div>
+
+    <div class="re-line">
+      <strong>Re: &nbsp;&nbsp; NOTICE OF DEFAULT &amp; INTENT TO ACCELERATE</strong><br>
+      Creditor: ${escapeHtml(assignor)}<br>
+      Servicer: ${escapeHtml(clientName)}<br>
+      Contract: ${escapeHtml(noteDesc)}<br>
+      Manufactured Home: ${escapeHtml(collateralFullDesc)}
+    </div>
+
+    <p>${salutation}</p>
+
+    <p>The undersigned and this Firm represent ${escapeHtml(clientName)}${isTriad ? ' as servicer for ' + escapeHtml(assignor) : ''} with respect to the above-referenced Contract and Manufactured Home.</p>
+
+    <p>You have failed to make payments when due under the Contract, and your account is delinquent.  As a result, you are in default under the terms of the Contract.</p>
+
+    <p>As of ${today}, the past due amount owed on your account, including unpaid principal and accrued but unpaid interest, late fees and other charges authorized under the Contract, totals $${escapeHtml(pastDue)}.  This amount does not include any payments which fall after ${today}, or within or after the said thirty (30) day demand period, which are and shall remain separately due.  Additionally, this amount does not include collection costs you agreed to pay pursuant to the terms of the Contract.  Payment of collections costs, including attorney's fees and expenses, is required to bring your account current.</p>
+
+    <p>Accordingly, demand is hereby made for the payment of $${escapeHtml(pastDue)} plus collection costs (the &ldquo;Total Amount Due&rdquo;) within thirty (30) days from the date of this letter.</p>
+
+    <p>Please contact ${escapeHtml(triadContact)} to obtain information regarding collection costs and the current total amount due.  Please be advised that partial payments will not be accepted, and you must contact ${escapeHtml(clientName)} to make payment arrangements.</p>
+
+    <p>This letter constitutes formal notice to you of your default under the terms of the Contract and formal demand for immediate payment in full of the Total Amount Due.  I have been instructed that, unless ${escapeHtml(clientName)} receives certified funds for the total amount due on or before thirty (30) days from the date of this letter, I am to take whatever lawful steps are necessary to protect my client&rsquo;s interest, including, but not limited to the filing of a lawsuit seeking a judgment for money damages and possession of the Manufactured Home.  If a lawsuit is filed, you may be liable for attorney&rsquo;s fees, expenses, and costs of court.</p>
+
+    <p>Furthermore, please be advised that pursuant to the terms of the Contract, upon your default, the entire unpaid principal amount of the Indebtedness may become immediately due and payable.  After the expiration of the said thirty (30) day period beginning on the date of this letter, if your account is not brought current, the entire amount of the Indebtedness will be accelerated without further notice to you, and the entire unpaid principal balance, accrued but unpaid interest, late fees, and such additional authorized charges will be due in full.</p>
+
+    <p>You are instructed to fax proof that the Manufactured Home is insured and that all taxes regarding the Manufactured Home are paid and current to ${escapeHtml(clientName)}${isTriad ? ' c/o Matthew Shelar at ' + escapeHtml(triadFax) : ''}.  If payment of the Total Amount Due plus collection costs is not received by ${escapeHtml(clientName)} within thirty (30) days from the date of this letter, ${escapeHtml(clientName)} demands that you vacate and deliver possession of the Manufactured Home at its current location to ${escapeHtml(clientName)} by ${escapeHtml(deadline30)}, at 10:00 a.m., C.S.T.  You are instructed to contact ${escapeHtml(clientName)} at least twenty-four (24) hours in advance.</p>
+
+    <p>This office is attempting to collect a debt and any information obtained will be used for that purpose.</p>
+
+    <div class="sig-wrap">
+      Sincerely,
+      <div class="sig-gap"></div>
+      Marc L. Lippincott
+      <div class="cc">cc: &nbsp;&nbsp;&nbsp;${escapeHtml(clientName)}</div>
+    </div>
+
+    ${fdcpaDisclosure}
+    </div></body></html>`;
   }
 
   // ── INITIAL DISCLOSURES ─────────────────────────────────────────────────────
@@ -6678,7 +6860,7 @@ ${fdcpaDisclosure}
 
     if (!causeNo) { toast('Enter the Cause No. before generating', 'error'); return; }
 
-    html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Initial Disclosures — ${escapeHtml(debtorName)}</title><style>${CSS} h2{margin:24pt 0 12pt;}</style></head><body>
+    html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Initial Disclosures — ${escapeHtml(debtorName)}</title><style>${CSS} h2{margin:24pt 0 12pt;}</style></head><body>${printBar}<div id="doc-wrap">
 ${caption(causeNo, court)}
 <h2>PLAINTIFF'S INITIAL DISCLOSURES</h2>
 <p><strong>TO:</strong>&nbsp;&nbsp;Defendant, ${escapeHtml(debtorName)}.</p>
@@ -6724,8 +6906,7 @@ Marc Lippincott is expected to provide expert testimony as to the reasonableness
 <p><strong>DISCLOSURE NO. 12</strong><br>Responsible 3rd parties.</p>
 <p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;None known.</p>
 </div>
-<scr' + 'ipt>window.print();</scr' + 'ipt>
-</body></html>`;
+</div></body></html>`;
   }
 
   // ── SHARED DISCOVERY PREAMBLE ───────────────────────────────────────────────
@@ -6753,7 +6934,7 @@ Marc Lippincott is expected to provide expert testimony as to the reasonableness
 ${certOfService(svcDate, debtorName, debtorAddr)}`;
 
     if (type === 'rogs') {
-      html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Interrogatories — ${escapeHtml(debtorName)}</title><style>${CSS}</style></head><body>
+      html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Interrogatories — ${escapeHtml(debtorName)}</title><style>${CSS}</style></head><body>${printBar}<div id="doc-wrap">
 ${caption(causeNo, court)}
 <h2>PLAINTIFF'S FIRST SET OF INTERROGATORIES TO DEFENDANT</h2>
 <p><strong>TO:</strong>&nbsp;&nbsp;Defendant, ${defLine}.</p>
@@ -6782,12 +6963,11 @@ ${[
   ['12','If you allege the Plaintiff has not accounted for all payments, please provide an accounting of all such alleged payments.'],
 ].map(([n,q]) => `<p><strong>Interrogatory No. ${n}</strong><br>${escapeHtml(q)}</p><p style="margin-left:0.5in;"><strong>RESPONSE:</strong></p>`).join('\n')}
 </div>
-<scr' + 'ipt>window.print();</scr' + 'ipt>
-</body></html>`;
+</div></body></html>`;
     }
 
     else if (type === 'rfp') {
-      html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>RFP — ${escapeHtml(debtorName)}</title><style>${CSS}</style></head><body>
+      html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>RFP — ${escapeHtml(debtorName)}</title><style>${CSS}</style></head><body>${printBar}<div id="doc-wrap">
 ${caption(causeNo, court)}
 <h2>PLAINTIFF'S FIRST REQUEST FOR PRODUCTION OF DOCUMENTS TO DEFENDANT</h2>
 <p><strong>TO:</strong>&nbsp;&nbsp;Defendant, ${defLine}.</p>
@@ -6823,12 +7003,11 @@ ${[
   ['20','Produce all bank statements and canceled checks related to all payments made.'],
 ].map(([n,q]) => `<p><strong>Request for Production No. ${n}</strong><br>${escapeHtml(q)}</p><p style="margin-left:0.5in;"><strong>RESPONSE:</strong></p>`).join('\n')}
 </div>
-<scr' + 'ipt>window.print();</scr' + 'ipt>
-</body></html>`;
+</div></body></html>`;
     }
 
     else if (type === 'rfa') {
-      html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>RFA — ${escapeHtml(debtorName)}</title><style>${CSS}</style></head><body>
+      html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>RFA — ${escapeHtml(debtorName)}</title><style>${CSS}</style></head><body>${printBar}<div id="doc-wrap">
 ${caption(causeNo, court)}
 <h2>PLAINTIFF'S FIRST REQUEST FOR ADMISSIONS TO DEFENDANT</h2>
 <p><strong>TO:</strong>&nbsp;&nbsp;Defendant, ${defLine}.</p>
@@ -6864,8 +7043,7 @@ ${[
   ['20','All conditions precedent to Plaintiff\'s claims have been performed or have occurred.'],
 ].map(([n,q]) => `<p><strong>Request for Admission No. ${n}</strong><br>${escapeHtml(q)}</p><p style="margin-left:0.5in;"><strong>RESPONSE:</strong></p>`).join('\n')}
 </div>
-<scr' + 'ipt>window.print();</scr' + 'ipt>
-</body></html>`;
+</div></body></html>`;
     }
   }
 
