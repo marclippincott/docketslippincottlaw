@@ -12292,10 +12292,37 @@ async function handleLarPageUpload(input) {
         return;
       }
 
-      // Try to resolve ourFileNo to a matter_id so saveLarReview can update directly
-      const matchedMatter = ourFileNo
+      // Try to match an existing matter — by our file#, client file#, or loan account#
+      const parsedClientFileNo  = result.parsed?.matter?.loan_account_no || result.parsed?.matter?.client_file_no || null;
+      const parsedDebtorLast    = (result.parsed?.matter?.debtor_last_name || '').trim().toLowerCase();
+      const parsedClientCode    = clientCode;
+
+      let matchedMatter = ourFileNo
         ? allMatters.find(m => m.our_file_no === ourFileNo && !m.deleted_at)
         : null;
+
+      // Fallback 1: match by client file # / loan account # within same client
+      if (!matchedMatter && parsedClientFileNo) {
+        matchedMatter = allMatters.find(m =>
+          !m.deleted_at &&
+          m.client_code === parsedClientCode &&
+          (m.client_file_no === parsedClientFileNo || m.loan_account_no === parsedClientFileNo)
+        ) || null;
+      }
+
+      // Fallback 2: match by debtor last name within same client (advisory — only if unique match)
+      if (!matchedMatter && parsedDebtorLast) {
+        const nameMatches = allMatters.filter(m =>
+          !m.deleted_at &&
+          m.client_code === parsedClientCode &&
+          (m.debtor_name || '').toLowerCase().startsWith(parsedDebtorLast)
+        );
+        if (nameMatches.length === 1) matchedMatter = nameMatches[0];
+      }
+
+      // If a match was found, carry over its file# and box ID
+      const resolvedOurFileNo   = ourFileNo || matchedMatter?.our_file_no || null;
+      const resolvedBoxFolderId = matchedMatter?.box_folder_id || null;
 
       // Open the review modal pre-filled with parser output
       openLarReview({
@@ -12303,7 +12330,8 @@ async function handleLarPageUpload(input) {
         context: 'import-page',
         lar_text: larText,
         client_code: clientCode,
-        our_file_no: ourFileNo,
+        our_file_no: resolvedOurFileNo,
+        box_folder_id: resolvedBoxFolderId,
         match_matter_id: matchedMatter?.id || null,
         filename: file.name,
         matter: splitLarName(result.parsed?.matter || {}),
