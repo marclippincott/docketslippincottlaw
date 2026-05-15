@@ -3013,10 +3013,9 @@ ENTRY [MM/DD/YY] [INITIALS]: [status note]</pre>
           </div>
           <div class="form-group"><label>Display name <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;">— auto-built as Last, First M. Suffix</span></label><input id="ac-name" placeholder="Smith, Jane A. Esq." /></div>
           <div class="form-row">
-            <div class="form-group"><label>Firm / Court / Agency</label><input id="ac-firm" placeholder="Smith &amp; Associates" /></div>
             <div class="form-group">
               <label>Type</label>
-              <select id="ac-type">
+              <select id="ac-type" onchange="toggleAcFirmTitle()">
                 <option value="Attorney">Attorney</option>
                 <option value="Court">Court</option>
                 <option value="Constable">Constable</option>
@@ -3025,11 +3024,11 @@ ENTRY [MM/DD/YY] [INITIALS]: [status note]</pre>
                 <option value="Other">Other</option>
               </select>
             </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label>Email</label><input id="ac-email" type="email" /></div>
             <div class="form-group"><label>Phone</label><input id="ac-phone" /></div>
           </div>
+          <div id="ac-firm-row" class="form-group"><label>Firm</label><input id="ac-firm" placeholder="Smith &amp; Associates" /></div>
+          <div id="ac-title-row" class="form-group" style="display:none;"><label>Title / Office</label><input id="ac-title" placeholder="Title or office" /></div>
+          <div class="form-group"><label>Email</label><input id="ac-email" type="email" /></div>
         </div>
       </div>
 
@@ -11192,6 +11191,33 @@ function autoUpdateAcName() {
   if (nameEl) nameEl.value = buildDebtorDisplayName(last, first, middle, suffix);
 }
 
+function toggleAcFirmTitle() {
+  const type = document.getElementById('ac-type')?.value || '';
+  // Firm: Attorney, Process Server, Other
+  // Title: Court, Constable, Sheriff, Other
+  // Other gets both
+  const firmTypes  = ['Attorney', 'Process Server', 'Other'];
+  const titleTypes = ['Court', 'Constable', 'Sheriff', 'Other'];
+  const showFirm  = firmTypes.includes(type);
+  const showTitle = titleTypes.includes(type);
+  const firmRow  = document.getElementById('ac-firm-row');
+  const titleRow = document.getElementById('ac-title-row');
+  if (firmRow)  firmRow.style.display  = showFirm  ? '' : 'none';
+  if (titleRow) titleRow.style.display = showTitle ? '' : 'none';
+  // Update placeholders to be contextually helpful
+  const firmEl  = document.getElementById('ac-firm');
+  const titleEl = document.getElementById('ac-title');
+  if (firmEl) {
+    firmEl.placeholder = type === 'Process Server' ? 'ABC Process Service LLC' : 'Smith & Associates';
+  }
+  if (titleEl) {
+    if (type === 'Court')     titleEl.placeholder = 'Judge, 198th District Court';
+    else if (type === 'Constable') titleEl.placeholder = 'Constable, Precinct 2';
+    else if (type === 'Sheriff')   titleEl.placeholder = 'Sheriff, Travis County';
+    else                           titleEl.placeholder = 'Title or office';
+  }
+}
+
 function setDirContactSource(source) {
   const extBtn = document.getElementById('dir-tab-external');
   const cliBtn = document.getElementById('dir-tab-client');
@@ -11391,9 +11417,10 @@ async function openAssignContact() {
   document.getElementById('ac-results').innerHTML = '';
   document.getElementById('ac-selected-contact').style.display = 'none';
   document.getElementById('ac-new-contact-form').style.display = 'none';
-  ['ac-first-name','ac-middle-name','ac-last-name','ac-suffix','ac-name','ac-firm','ac-email','ac-phone'].forEach(id => {
+  ['ac-first-name','ac-middle-name','ac-last-name','ac-suffix','ac-name','ac-firm','ac-title','ac-email','ac-phone'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
+  toggleAcFirmTitle();
   // Always reload client contacts so search is never stale
   await loadAllClientContacts();
   // Populate client contact dropdown
@@ -11523,7 +11550,7 @@ function clearContactSelection() {
   document.getElementById('ac-new-contact-form').style.display = '';
   document.getElementById('ac-search').value = '';
   document.getElementById('ac-results').style.display = 'none';
-  ['ac-first-name','ac-middle-name','ac-last-name','ac-suffix','ac-name','ac-firm','ac-email','ac-phone'].forEach(id => {
+  ['ac-first-name','ac-middle-name','ac-last-name','ac-suffix','ac-name','ac-firm','ac-title','ac-email','ac-phone'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
 }
@@ -11579,6 +11606,7 @@ async function saveContactAssignment() {
       last_name:    last,
       suffix,
       firm:         norm(document.getElementById('ac-firm').value),
+      title:        norm(document.getElementById('ac-title').value),
       email:        norm(document.getElementById('ac-email').value),
       phone:        norm(document.getElementById('ac-phone').value),
       contact_type: document.getElementById('ac-type').value || 'Other',
