@@ -2707,8 +2707,16 @@ ENTRY [MM/DD/YY] [INITIALS]: [status note]</pre>
         <div class="form-group"><label>Rep</label><select id="ec-rep_name" data-rep-select data-rep-blank="none" onchange="handleRepSelectChange(this);"></select></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Status</label><select id="ec-status"></select></div>
+        <div class="form-group"><label>Status</label><select id="ec-status" onchange="toggleBkFields()"></select></div>
         <div class="form-group"><label>Hold reason</label><input id="ec-hold_reason" placeholder="Only relevant if Hold Legal" /></div>
+      </div>
+      <div id="ec-bk-fields" style="display:none;background:rgba(80,40,120,0.06);border:1px solid rgba(80,40,120,0.18);border-radius:3px;padding:10px 12px;margin-bottom:8px;">
+        <div style="font-size:11px;font-weight:600;color:#502878;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Bankruptcy Information</div>
+        <div class="form-row">
+          <div class="form-group"><label>BK case no.</label><input id="ec-bk_case_no" placeholder="e.g. 24-50133-BW013" style="font-family:var(--font-mono);" /></div>
+          <div class="form-group"><label>Chapter</label><select id="ec-bk_chapter"><option value="">—</option><option value="7">Chapter 7</option><option value="11">Chapter 11</option><option value="12">Chapter 12</option><option value="13">Chapter 13</option></select></div>
+        </div>
+        <div class="form-group"><label>BK court</label><input id="ec-bk_court" placeholder="e.g. W.D. Texas – San Antonio Division" /></div>
       </div>
       <div class="form-group">
         <label>Box folder ID <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;">— numeric ID from app.box.com/folder/<strong>12345</strong></span></label>
@@ -2852,6 +2860,9 @@ ENTRY [MM/DD/YY] [INITIALS]: [status note]</pre>
           <select id="dir-ext-type">
             <option value="Attorney">Attorney</option>
             <option value="Court">Court</option>
+            <option value="Constable">Constable</option>
+            <option value="Sheriff">Sheriff</option>
+            <option value="Process Server">Process Server</option>
             <option value="Other">Other</option>
           </select>
         </div>
@@ -2915,6 +2926,9 @@ ENTRY [MM/DD/YY] [INITIALS]: [status note]</pre>
         <select id="ce-type">
           <option value="Attorney">Attorney</option>
           <option value="Court">Court</option>
+          <option value="Constable">Constable</option>
+          <option value="Sheriff">Sheriff</option>
+          <option value="Process Server">Process Server</option>
           <option value="Other">Other</option>
         </select>
       </div>
@@ -2978,6 +2992,9 @@ ENTRY [MM/DD/YY] [INITIALS]: [status note]</pre>
             <option value="Debtor's Counsel"></option>
             <option value="Judge"></option>
             <option value="Court Clerk"></option>
+            <option value="Constable"></option>
+            <option value="Sheriff"></option>
+            <option value="Process Server"></option>
             <option value="Mediator"></option>
             <option value="Trustee"></option>
             <option value="Title Company Rep"></option>
@@ -2999,6 +3016,9 @@ ENTRY [MM/DD/YY] [INITIALS]: [status note]</pre>
             <select id="ac-type">
               <option value="Attorney">Attorney</option>
               <option value="Court">Court</option>
+              <option value="Constable">Constable</option>
+              <option value="Sheriff">Sheriff</option>
+              <option value="Process Server">Process Server</option>
               <option value="Other">Other</option>
             </select>
           </div>
@@ -4929,7 +4949,7 @@ function rebuildSearchIndex() {
       // contact info now in matter_contacts table — searched separately
       m.last_action_summary,
       // Court / case fields
-      m.cause_no, m.court, m.county,
+      m.cause_no, m.court, m.county, m.bk_case_no, m.bk_court, m.bk_chapter,
       // Milestone date columns — searchable as ISO dates
       m.nod_sent_date, m.military_check_date, m.bk_check_date,
     ].filter(v => v != null && v !== '').map(v => String(v).toLowerCase());
@@ -6238,6 +6258,14 @@ async function openDetail(id, opts) {
           <div class="field-row"><span class="field-label">Cause No.</span><span class="field-value" style="font-family:var(--font-mono);">${escapeHtml(m.cause_no||'—')}</span></div>
           <div class="field-row"><span class="field-label">Court</span><span class="field-value">${escapeHtml(m.court||'—')}</span></div>
           <div class="field-row"><span class="field-label">County</span><span class="field-value">${escapeHtml(m.county||'—')}</span></div>
+          ${m.status === 'Hold Legal: Bankruptcy' ? `
+          <div class="field-row" style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(80,40,120,0.15);">
+            <span class="field-label" style="color:#502878;">BK Case No.</span>
+            <span class="field-value" style="font-family:var(--font-mono);">${escapeHtml(m.bk_case_no||'—')}</span>
+          </div>
+          <div class="field-row"><span class="field-label" style="color:#502878;">BK Chapter</span><span class="field-value">${m.bk_chapter ? 'Chapter ' + escapeHtml(m.bk_chapter) : '—'}</span></div>
+          <div class="field-row"><span class="field-label" style="color:#502878;">BK Court</span><span class="field-value">${escapeHtml(m.bk_court||'—')}</span></div>
+          ` : ''}
           <div class="field-row"><span class="field-label">Assignor</span><span class="field-value">${escapeHtml(m.assignor||'—')}</span></div>
           <div class="field-row" style="align-items:flex-start;">
             <span class="field-label" style="padding-top:2px;">Addresses</span>
@@ -10848,16 +10876,19 @@ async function loadAllContacts() {
 }
 
 // ── Contacts directory (nav section) ─────────────────────────────────
-let _contactFilter = 'all'; // 'all' | client short_code | 'Attorney' | 'Court' | 'Other'
+let _contactFilter = 'all'; // 'all' | client short_code | 'Attorney' | 'Court' | 'Constable' | 'Sheriff' | 'Process Server' | 'Other'
 
 function buildContactFilterPills() {
   const el = document.getElementById('contacts-filter-pills');
   if (!el) return;
   const clientPills = (allClients || []).map(c => ({ key: c.short_code, label: c.short_code }));
   const typePills = [
-    { key: 'Attorney', label: 'Attorney' },
-    { key: 'Court',    label: 'Court'    },
-    { key: 'Other',    label: 'Other'    },
+    { key: 'Attorney',       label: 'Attorney'       },
+    { key: 'Court',          label: 'Court'          },
+    { key: 'Constable',      label: 'Constable'      },
+    { key: 'Sheriff',        label: 'Sheriff'        },
+    { key: 'Process Server', label: 'Process Server' },
+    { key: 'Other',          label: 'Other'          },
   ];
   const pills = [{ key: 'all', label: 'All' }, ...clientPills, ...typePills];
   el.innerHTML = pills.map(p => {
@@ -10888,7 +10919,7 @@ async function renderContactsDirectory() {
   buildContactFilterPills();
 
   const filterIsClientCode = allClients.some(c => c.short_code === _contactFilter);
-  const filterIsType = ['Attorney','Court','Other'].includes(_contactFilter);
+  const filterIsType = ['Attorney','Court','Constable','Sheriff','Process Server','Other'].includes(_contactFilter);
 
   let filteredCentral = allContacts.filter(c =>
     !q ||
@@ -11457,6 +11488,9 @@ function selectContact(src, contactId) {
     if (src === 'client') roleEl.value = 'Rep';
     else if (c.contact_type === 'Attorney') roleEl.value = 'Opposing Counsel';
     else if (c.contact_type === 'Court') roleEl.value = 'Judge';
+    else if (c.contact_type === 'Constable') roleEl.value = 'Constable';
+    else if (c.contact_type === 'Sheriff') roleEl.value = 'Sheriff';
+    else if (c.contact_type === 'Process Server') roleEl.value = 'Process Server';
   }
   document.getElementById('ac-role').focus();
 }
@@ -12081,6 +12115,8 @@ const EDIT_CASE_FIELDS = [
   'home_year', 'home_make', 'home_model', 'home_size', 'home_serial_no',
   // External links
   'box_folder_id',
+  // Bankruptcy
+  'bk_case_no', 'bk_court', 'bk_chapter',
 ];
 
 // Numeric-typed fields (so we serialize them as numbers, not strings)
@@ -12189,6 +12225,12 @@ function toggleLegalDescField() {
   if (wrap) wrap.style.display = ['Land Plus','Land Home'].includes(loanType) ? '' : 'none';
 }
 
+function toggleBkFields() {
+  const status = document.getElementById('ec-status')?.value || '';
+  const wrap = document.getElementById('ec-bk-fields');
+  if (wrap) wrap.style.display = (status === 'Hold Legal: Bankruptcy') ? '' : 'none';
+}
+
 function switchEcTab(tab) {
   document.querySelectorAll('#ec-tabs .case-tab').forEach(b => {
     b.classList.toggle('active', b.dataset.ecTab === tab);
@@ -12230,6 +12272,7 @@ function openEditCaseDetails() {
   if (bkEl)   bkEl.checked   = !!m.debtor_bk;
   if (coBkEl) coBkEl.checked = !!m.co_debtor_bk;
   toggleLegalDescField();
+  toggleBkFields();
 
   // Init co-same-address checkbox
   const mForCo = allMatters.find(x => x.id === currentMatterId);
@@ -15014,7 +15057,7 @@ window.addEventListener('appinstalled', () => {
     { title:'Case Detail View', body:'Four tabs per matter: <strong>Overview</strong> (debtor info, co-debtor, loan details, contacts), <strong>Activity</strong> (journal entries with time tracking), <strong>Deadlines</strong> (case-level), and <strong>Milestones</strong> (tracked workflow dates). Use the &#9998; pencil to edit.', target:'.topbar-nav', position:'bottom', section:'matters', sectionKey:'matters', img:null },
     { title:'Deadlines', body:'All open deadlines across every matter, sorted by date. Deadlines can be added manually or auto-created from journal entries. <strong>&#128260; Sync</strong> pulls from Outlook and matches events to matters. <strong>&#128197; Export</strong> pushes deadlines back to Outlook.', target:'#section-deadlines', position:'top', section:'deadlines', sectionKey:'deadlines', img:'deadlines' },
     { title:'Activity Feed', body:'Every journal entry across all matters in one searchable table. Collapsible pill rows filter by <strong>Status</strong>, <strong>Client</strong>, <strong>Category</strong>, <strong>Timekeeper</strong>, and <strong>Tags</strong>. The date column always shows when the entry was <em>logged</em> &mdash; deadline dates appear in the category annotation.', target:'#section-activity', position:'top', section:'activity', sectionKey:'activity', img:'activity' },
-    { title:'Contacts Directory', body:'Firm-wide contact list. Pill filters narrow by client or role (Attorney, Court, Other). Click a row to open the detail panel &mdash; shows contact info and every linked matter. An amber <strong>&#9878; Represented</strong> banner appears on a case when opposing counsel is assigned.', target:'#section-contacts', position:'top', section:'contacts', sectionKey:'contacts', img:'contacts' },
+    { title:'Contacts Directory', body:'Firm-wide contact list. Pill filters narrow by client or role (Attorney, Court, Constable, Sheriff, Process Server, Other). Click a row to open the detail panel &mdash; shows contact info and every linked matter. An amber <strong>&#9878; Represented</strong> banner appears on a case when opposing counsel is assigned.', target:'#section-contacts', position:'top', section:'contacts', sectionKey:'contacts', img:'contacts' },
     { title:'Reminders', body:'Follow-up tasks with due dates and priority levels (High / Med / Low). Overdue reminders appear in red. The <strong>&#128276; bell</strong> in the topbar shows a badge count when reminders are due or overdue.', target:'#bell-btn', position:'bottom', section:'dashboard', sectionKey:'reminders', img:null },
     { title:'Import', body:'Upload a <strong>Word document</strong> or <strong>PDF docket</strong> &mdash; AI extracts matters and journal entries automatically. Select the client first, then drop the file. When creating a new matter from a LAR, fill in <strong>Our File #</strong> and <strong>Box Folder ID</strong> at the top of the review form.', target:'#section-import', position:'top', section:'import', sectionKey:'import', img:'import_img' },
     { title:'Export', body:'Four tabs: <strong>PDF Report</strong>, <strong>Matters CSV</strong>, <strong>Journal CSV</strong>, and <strong>Cosmolex Time</strong> (25-column tab-delimited format for Cosmolex import). Quick-select date buttons &mdash; Last month / This month / This year / Last 30 / Last 90 &mdash; set the range instantly.', target:'#section-export', position:'top', section:'export', sectionKey:'export', img:'export_img' },
