@@ -2973,7 +2973,7 @@ ENTRY [MM/DD/YY] [INITIALS]: [status note]</pre>
       <!-- External contact section -->
       <div id="ac-external-section">
         <div class="form-group">
-          <label>Search contacts <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;">— or leave blank to create a new one</span></label>
+          <label>Search contacts <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;">— type to find existing, or fill in below to create new</span></label>
           <input id="ac-search" type="text" placeholder="Type name, firm, email…" oninput="renderContactSearchResults()"
             style="width:100%;padding:7px 10px;border:1px solid var(--rule);font-family:var(--font-sans);font-size:13px;border-radius:2px;outline:none;margin-bottom:6px;" />
           <div id="ac-results" style="max-height:200px;overflow-y:auto;border:1px solid var(--rule);border-radius:2px;display:none;"></div>
@@ -3002,7 +3002,7 @@ ENTRY [MM/DD/YY] [INITIALS]: [status note]</pre>
           </datalist>
         </div>
         <div id="ac-new-contact-form" style="display:none;border-top:1px solid var(--rule);padding-top:12px;margin-top:4px;">
-          <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-style:italic;">No existing contact selected — fill in details to create a new one:</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-style:italic;">Create a new contact (or search above to pick an existing one):</div>
           <div class="form-row">
             <div class="form-group"><label>Name <span style="color:var(--danger);">*</span></label><input id="ac-name" placeholder="Jane Smith, Esq." /></div>
             <div class="form-group"><label>Job title</label><input id="ac-firm" placeholder="Loan Officer" /></div>
@@ -11350,6 +11350,10 @@ function setContactSource(source) {
     cliBtn.style.background = 'var(--paper)';  cliBtn.style.color = 'var(--ink)';
     extSec.style.display = ''; cliSec.style.display = 'none';
     saveBtn.onclick = saveContactAssignment;
+    // Show the new-contact form immediately if nothing is selected yet
+    if (!_acSelected) {
+      document.getElementById('ac-new-contact-form').style.display = '';
+    }
     setTimeout(() => document.getElementById('ac-search').focus(), 30);
   } else {
     cliBtn.style.background = 'var(--accent)'; cliBtn.style.color = '#fff';
