@@ -1475,6 +1475,59 @@ tr.clickable:hover td { background: rgba(139,37,0,0.03); }
 #tour-help-btn:hover { background: rgba(139,37,0,0.4); border-color: var(--accent); color: var(--paper); }
 
 
+/* ── MATTER ADDRESSES ── */
+.addr-entry {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 12px;
+}
+.addr-entry:last-child { border-bottom: none; }
+.addr-badge {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  background: var(--cream);
+  border: 1px solid var(--rule);
+  color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.addr-badge.primary {
+  background: rgba(26,74,107,0.08);
+  border-color: rgba(26,74,107,0.2);
+  color: #1a4a6b;
+}
+.addr-party-badge {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  background: rgba(139,37,0,0.07);
+  border: 1px solid rgba(139,37,0,0.15);
+  color: var(--accent);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.addr-text { flex: 1; color: var(--ink); min-width: 0; }
+.addr-actions { display: flex; gap: 3px; flex-shrink: 0; }
+.addr-add-btn {
+  font-size: 10px;
+  padding: 2px 8px;
+  margin-top: 6px;
+  background: none;
+  border: 1px dashed var(--rule);
+  color: var(--muted);
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: all 0.15s;
+}
+.addr-add-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(139,37,0,0.03); }
+/* Address editor modal */
+#modal-addr-edit .modal { max-width: 480px; }
+
 </style>
 </head>
 <body>
@@ -5751,6 +5804,50 @@ function buildReportHtml(matters, opts, entriesByMatterDetailed) {
   <button class="print-bar" onclick="window.print()">🖨 Print / Save as PDF${opts.orientation === 'landscape' ? ' — select Landscape in print dialog' : ''}</button>
   ${body}
 
+<!-- ── ADDRESS EDITOR MODAL ── -->
+<div class="modal-bg" id="modal-addr-edit">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-head">
+      <h3 id="addr-modal-title">Add address</h3>
+      <button class="btn btn-sm" onclick="closeModal('modal-addr-edit')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="addr-edit-id" />
+      <div class="form-group">
+        <label>Party</label>
+        <select id="addr-edit-party">
+          <option value="debtor">Debtor</option>
+          <option value="codebtor">Co-debtor</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Label</label>
+        <select id="addr-edit-label">
+          <option value="Mailing">Mailing</option>
+          <option value="Property">Property</option>
+          <option value="P.O. Box">P.O. Box</option>
+          <option value="Work">Work</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Address <span style="color:var(--danger);">*</span></label>
+        <input type="text" id="addr-edit-address" placeholder="123 Main St, City, TX 78701" />
+      </div>
+      <div class="form-group">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+          <input type="checkbox" id="addr-edit-primary" />
+          Primary address for this party
+        </label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('modal-addr-edit')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAddressEdit()">Save address</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>`;
 }
@@ -6060,6 +6157,11 @@ async function openDetail(id, opts) {
     .order('snapshot_date', { ascending: false }).limit(1);
   const fin = financials && financials.length ? financials[0] : null;
 
+  const { data: matterAddresses } = await db.from('matter_addresses')
+    .select('*').eq('matter_id', id)
+    .order('party').order('sort_order').order('created_at');
+  window._matterAddresses = matterAddresses || [];
+
   const { data: assignments } = await db.from('matter_assignments')
     .select('id, role_id, contact_roles(name, sort_order), user_profiles(id, full_name, initials)')
     .eq('matter_id', id)
@@ -6124,8 +6226,10 @@ async function openDetail(id, opts) {
           <div class="field-row"><span class="field-label">Client file #</span><span class="field-value" style="font-family:var(--font-mono);">${escapeHtml(m.client_file_no||'—')}</span></div>
           <div class="field-row"><span class="field-label">Cause No.</span><span class="field-value" style="font-family:var(--font-mono);">${escapeHtml(m.cause_no||'—')}</span></div>
           <div class="field-row"><span class="field-label">Assignor</span><span class="field-value">${escapeHtml(m.assignor||'—')}</span></div>
-          <div class="field-row"><span class="field-label">Debtor address</span><span class="field-value">${escapeHtml(m.debtor_address||'—')}</span></div>
-          <div class="field-row"><span class="field-label">MH address</span><span class="field-value">${escapeHtml(m.mh_address||'—')}</span></div>
+          <div class="field-row" style="align-items:flex-start;">
+            <span class="field-label" style="padding-top:2px;">Addresses</span>
+            <span class="field-value" id="matter-addresses-display" style="flex:1;"></span>
+          </div>
         </div>
         <div class="detail-col">
           <div class="field-row"><span class="field-label">Status</span><span class="field-value">${escapeHtml(m.status)}</span></div>
@@ -6366,36 +6470,9 @@ async function openDetail(id, opts) {
             <label style="font-size:10px;">Past due amount <span style="color:var(--danger);">*</span></label>
             <input id="doc-demand-pastdue" type="text" placeholder="e.g. 3,913.36" style="font-family:var(--font-mono);font-size:12px;" />
           </div>
-          <div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:10px 0 6px;">Primary debtor</div>
-          <div class="form-group" style="margin-bottom:8px;">
-            <label style="font-size:10px;">CMRR #</label>
-            <input id="doc-demand-cmrr1" type="text" placeholder="9589 0710 5270 1412 7985 44" style="font-family:var(--font-mono);font-size:11px;" />
-          </div>
-          <div class="form-group" style="margin-bottom:8px;">
-            <label style="font-size:10px;">Alternate address (if different from debtor address on file)</label>
-            <input id="doc-demand-altaddr" type="text" placeholder="e.g. P.O. Box 626, Comfort, TX 78013" style="font-size:11px;" />
-          </div>
-          <div class="form-group" style="margin-bottom:8px;">
-            <label style="font-size:10px;">CMRR # (alternate address)</label>
-            <input id="doc-demand-cmrr2" type="text" placeholder="optional — only if sending to alternate address too" style="font-family:var(--font-mono);font-size:11px;" />
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;margin:10px 0 6px;">
-            <input type="checkbox" id="doc-demand-include-codebtor" onchange="document.getElementById('doc-demand-codebtor-fields').style.display=this.checked?'':'none'" />
-            <label for="doc-demand-include-codebtor" style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;cursor:pointer;">Include co-debtor</label>
-          </div>
-          <div id="doc-demand-codebtor-fields" style="display:none;">
-            <div class="form-group" style="margin-bottom:8px;">
-              <label style="font-size:10px;">Co-debtor CMRR #</label>
-              <input id="doc-demand-cmrr-co" type="text" placeholder="9589 0710 5270 1412 7985 55" style="font-family:var(--font-mono);font-size:11px;" />
-            </div>
-            <div class="form-group" style="margin-bottom:8px;">
-              <label style="font-size:10px;">Co-debtor address <span style="font-weight:400;color:var(--muted);">(if different from primary debtor)</span></label>
-              <input id="doc-demand-coaddr" type="text" placeholder="leave blank if same as primary debtor" style="font-size:11px;" />
-            </div>
-            <div class="form-group" style="margin-bottom:8px;">
-              <label style="font-size:10px;">Co-debtor alt address CMRR # (if any)</label>
-              <input id="doc-demand-cmrr-co2" type="text" placeholder="optional" style="font-family:var(--font-mono);font-size:11px;" />
-            </div>
+          <div style="font-size:10px;color:var(--muted);margin:8px 0 4px;">Select addresses to include — enter CMRR # for each:</div>
+          <div id="doc-demand-addr-checkboxes" style="border:1px solid var(--rule);padding:8px 10px;border-radius:2px;background:var(--cream);">
+            <span style="font-size:11px;color:var(--muted);">Loading addresses…</span>
           </div>
           <button class="btn btn-primary btn-sm" style="width:100%;margin-top:8px;" onclick="generateDocument('demand')">Generate PDF &#x2197;</button>
         </div>
@@ -6499,10 +6576,123 @@ async function openDetail(id, opts) {
   // Render activity panel contents
   renderActivityFilterBar();
   renderActivityList();
+  // Render addresses mini-editor
+  renderMatterAddressesDisplay();
   // Load case contacts asynchronously (contacts tab)
   if (!allContacts.length) loadAllContacts();
   renderCaseContacts(id);
 }
+
+// ── MATTER ADDRESSES ─────────────────────────────────────────────────────────
+
+const ADDR_LABELS   = ['Mailing','Property','P.O. Box','Work','Other'];
+const ADDR_PARTIES  = { debtor: 'Debtor', codebtor: 'Co-debtor' };
+
+function renderMatterAddressesDisplay() {
+  const el = document.getElementById('matter-addresses-display');
+  if (!el) return;
+  const addrs = window._matterAddresses || [];
+
+  if (!addrs.length) {
+    el.innerHTML = `<span style="color:var(--muted);font-size:11px;font-style:italic;">No addresses on file</span>
+      <button class="addr-add-btn" onclick="openAddressEditor(null,'debtor')">+ Add address</button>`;
+    return;
+  }
+
+  const rows = addrs.map(a => `
+    <div class="addr-entry">
+      <span class="addr-party-badge">${ADDR_PARTIES[a.party]||a.party}</span>
+      <span class="addr-badge ${a.is_primary?'primary':''}">${escapeHtml(a.label)}${a.is_primary?' ★':''}</span>
+      <span class="addr-text">${escapeHtml(a.address)}</span>
+      <div class="addr-actions">
+        <button class="btn btn-sm" style="font-size:9px;padding:1px 6px;" onclick="openAddressEditor('${a.id}','${a.party}')" title="Edit">✏</button>
+        <button class="btn btn-sm" style="font-size:9px;padding:1px 6px;color:var(--danger);" onclick="deleteAddress('${a.id}')" title="Delete">✕</button>
+      </div>
+    </div>`).join('');
+
+  el.innerHTML = rows +
+    `<button class="addr-add-btn" onclick="openAddressEditor(null,'debtor')">+ Add address</button>`;
+}
+
+function openAddressEditor(addrId, defaultParty) {
+  const addrs  = window._matterAddresses || [];
+  const record = addrId ? addrs.find(a => a.id === addrId) : null;
+
+  document.getElementById('addr-modal-title').textContent = record ? 'Edit address' : 'Add address';
+  document.getElementById('addr-edit-id').value      = record ? record.id : '';
+  document.getElementById('addr-edit-party').value   = record ? record.party : (defaultParty || 'debtor');
+  document.getElementById('addr-edit-label').value   = record ? record.label : 'Mailing';
+  document.getElementById('addr-edit-address').value = record ? record.address : '';
+  document.getElementById('addr-edit-primary').checked = record ? record.is_primary : false;
+
+  document.getElementById('modal-addr-edit').classList.add('open');
+  setTimeout(() => document.getElementById('addr-edit-address').focus(), 100);
+}
+
+async function saveAddressEdit() {
+  const id      = document.getElementById('addr-edit-id').value;
+  const party   = document.getElementById('addr-edit-party').value;
+  const label   = document.getElementById('addr-edit-label').value;
+  const address = document.getElementById('addr-edit-address').value.trim();
+  const primary = document.getElementById('addr-edit-primary').checked;
+
+  if (!address) { toast('Address is required', 'error'); return; }
+  if (!currentMatterId) { toast('No matter loaded', 'error'); return; }
+
+  // If marking as primary, clear primary flag from others of same party
+  if (primary) {
+    await db.from('matter_addresses')
+      .update({ is_primary: false })
+      .eq('matter_id', currentMatterId)
+      .eq('party', party)
+      .neq('id', id || '00000000-0000-0000-0000-000000000000');
+  }
+
+  let error;
+  if (id) {
+    ({ error } = await db.from('matter_addresses')
+      .update({ party, label, address, is_primary: primary })
+      .eq('id', id));
+  } else {
+    // Get next sort_order
+    const existing = (window._matterAddresses || []).filter(a => a.party === party);
+    const sortOrder = existing.length;
+    ({ error } = await db.from('matter_addresses')
+      .insert({ matter_id: currentMatterId, party, label, address, is_primary: primary, sort_order: sortOrder }));
+  }
+
+  if (error) { toast('Save failed: ' + error.message, 'error'); return; }
+
+  closeModal('modal-addr-edit');
+  toast(id ? 'Address updated' : 'Address added');
+
+  // Refresh
+  const { data } = await db.from('matter_addresses')
+    .select('*').eq('matter_id', currentMatterId)
+    .order('party').order('sort_order').order('created_at');
+  window._matterAddresses = data || [];
+  renderMatterAddressesDisplay();
+
+  // Also update the primary debtor_address on the matters table for backward compat
+  const primaryDebtor = (window._matterAddresses).find(a => a.party === 'debtor' && a.is_primary);
+  if (primaryDebtor) {
+    await db.from('matters').update({ debtor_address: primaryDebtor.address }).eq('id', currentMatterId);
+    const m = allMatters.find(x => x.id === currentMatterId);
+    if (m) m.debtor_address = primaryDebtor.address;
+  }
+}
+
+async function deleteAddress(addrId) {
+  if (!confirm('Delete this address?')) return;
+  const { error } = await db.from('matter_addresses').delete().eq('id', addrId);
+  if (error) { toast('Delete failed: ' + error.message, 'error'); return; }
+
+  window._matterAddresses = (window._matterAddresses || []).filter(a => a.id !== addrId);
+  renderMatterAddressesDisplay();
+  toast('Address deleted');
+}
+
+// ── END MATTER ADDRESSES ──────────────────────────────────────────────────────
 
 // ── DOCUMENT GENERATION ──────────────────────────────────────────────────────
 // Merges matter data with standard firm document templates and opens a
@@ -6724,63 +6914,70 @@ async function generateDocument(type) {
 
   // ── DEMAND LETTER ───────────────────────────────────────────────────────────
   if (type === 'demand') {
-    const pastDue        = document.getElementById('doc-demand-pastdue')?.value.trim() || '_______________';
-    const cmrr1          = document.getElementById('doc-demand-cmrr1')?.value.trim() || '';
-    const cmrr2          = document.getElementById('doc-demand-cmrr2')?.value.trim() || '';
-    const altAddr        = document.getElementById('doc-demand-altaddr')?.value.trim() || '';
-    const inclCo         = document.getElementById('doc-demand-include-codebtor')?.checked || false;
-    const cmrrCo         = document.getElementById('doc-demand-cmrr-co')?.value.trim() || '';
-    const coAddrOverride = document.getElementById('doc-demand-coaddr')?.value.trim() || '';
-    const cmrrCo2        = document.getElementById('doc-demand-cmrr-co2')?.value.trim() || '';
-
+    const pastDue = document.getElementById('doc-demand-pastdue')?.value.trim() || '_______________';
     if (!pastDue || pastDue === '_______________') {
       toast('Enter the past due amount before generating', 'error'); return;
     }
-
-    // Co-debtor info from matter
-    const coAddr = coAddrOverride || m.co_debtor_address || debtorAddr;
-    const coName = coDebtorName || '';
 
     const deadline30 = (() => {
       const d = new Date(); d.setDate(d.getDate() + 30);
       return d.toLocaleDateString('en-US', {month:'long',day:'numeric',year:'numeric'});
     })();
 
-    // Address block builder — each column in the header
-    const addrBlock = (name, addr, cmrr, cmrr2label) => {
-      const cmrrLine  = cmrr  ? `<p style="margin:0;">VIA CERTIFIED MAIL<br>CMRR #${escapeHtml(cmrr)}</p>` : '';
-      const cmrr2Line = cmrr2label ? `<p style="margin:0;">VIA CERTIFIED MAIL<br>CMRR #${escapeHtml(cmrr2label)}</p>` : '';
-      return `<div style="flex:1;line-height:1.5;font-size:11pt;">
+    // Read checked addresses and their CMRR numbers
+    const wrap = document.getElementById('doc-demand-addr-checkboxes');
+    const allAddrs = window._matterAddresses || [];
+    const debtorAddrs   = (wrap?._debtorAddrs   || allAddrs.filter(a => a.party === 'debtor')   || []);
+    const codebtorAddrs = (wrap?._codebtorAddrs  || allAddrs.filter(a => a.party === 'codebtor') || []);
+
+    // Fallback if no addresses table entries
+    if (!debtorAddrs.length && m.debtor_address) {
+      debtorAddrs.push({ id: 'fallback-debtor', label: 'Mailing', address: m.debtor_address, is_primary: true, party: 'debtor' });
+    }
+
+    // Collect selected debtor address blocks
+    const selectedDebtorAddrs = debtorAddrs.map((a, i) => {
+      const cb   = document.getElementById('doc-addr-cb-deb-' + i);
+      const cmrr = document.getElementById('doc-addr-cmrr-deb-' + i)?.value.trim() || '';
+      return (cb && cb.checked) ? { ...a, cmrr } : null;
+    }).filter(Boolean);
+
+    const selectedCodbtorAddrs = codebtorAddrs.map((a, i) => {
+      const cb   = document.getElementById('doc-addr-cb-co-' + i);
+      const cmrr = document.getElementById('doc-addr-cmrr-co-' + i)?.value.trim() || '';
+      return (cb && cb.checked) ? { ...a, cmrr } : null;
+    }).filter(Boolean);
+
+    if (!selectedDebtorAddrs.length) {
+      toast('Select at least one debtor address', 'error'); return;
+    }
+
+    // Address block builder
+    const addrBlock = (name, addrObj) => {
+      const cmrrLine = addrObj.cmrr ? `<p style="margin:0;font-weight:bold;">VIA CERTIFIED MAIL</p><p style="margin:0;">CMRR #${escapeHtml(addrObj.cmrr)}</p>` : '';
+      return `<div style="flex:1;line-height:1.5;font-size:11pt;min-width:200px;">
         ${cmrrLine}
-        <p style="margin:0;">VIA REGULAR MAIL</p>
+        <p style="margin:0;font-weight:bold;">VIA REGULAR MAIL</p>
         <p style="margin:0;">${escapeHtml(name)}</p>
-        <p style="margin:0;">${escapeHtml(addr)}</p>
-        ${cmrr2Line ? '<br>' + cmrr2Line + '<p style=\"margin:0;\">VIA REGULAR MAIL</p><p style=\"margin:0;\">' + escapeHtml(name) + '</p><p style=\"margin:0;\">' + escapeHtml(altAddr || addr) + '</p>' : ''}
+        <p style="margin:0;">${escapeHtml(addrObj.address)}</p>
       </div>`;
     };
 
-    // Primary debtor address blocks
-    const primaryBlocks = [
-      addrBlock(debtorName, debtorAddr, cmrr1, ''),
-      altAddr ? addrBlock(debtorName, altAddr, cmrr2, '') : '',
-    ].filter(Boolean).join('');
+    const allAddrBlocks = [
+      ...selectedDebtorAddrs.map(a  => addrBlock(debtorName, a)),
+      ...selectedCodbtorAddrs.map(a => addrBlock(coDebtorName || 'Co-debtor', a)),
+    ].join('');
 
-    // Co-debtor address blocks (if included)
-    const coBlocks = (inclCo && coName) ? [
-      addrBlock(coName, coAddr, cmrrCo, ''),
-      cmrrCo2 ? addrBlock(coName, coAddrOverride || coAddr, cmrrCo2, '') : '',
-    ].filter(Boolean).join('') : '';
-
-    const allAddrBlocks = primaryBlocks + coBlocks;
-
-    // Salutation — Mr./Ms. based on last name; if co-debtor included use Dear Mr./Ms. X and Mr./Ms. Y
-    const lastName1 = debtorName.includes(',') ? debtorName.split(',')[0].trim() : debtorName;
-    const lastName2 = coName && coName.includes(',') ? coName.split(',')[0].trim() : (coName || '');
+    // Salutation
+    const lastName1  = debtorName.includes(',') ? debtorName.split(',')[0].trim() : debtorName;
+    const coName     = coDebtorName || '';
+    const lastName2  = coName.includes(',') ? coName.split(',')[0].trim() : coName;
+    const inclCo     = selectedCodbtorAddrs.length > 0;
     const salutation = inclCo && coName
       ? `Dear Mr./Ms. ${escapeHtml(lastName1)} and Mr./Ms. ${escapeHtml(lastName2)},`
       : `Dear Mr./Ms. ${escapeHtml(lastName1)},`;
 
-    // "executed by" line includes co-debtor if present
+    // "executed by" line
     const executedBy = coName ? `${escapeHtml(debtorName)} and ${escapeHtml(coName)}` : escapeHtml(debtorName);
 
     html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Demand Letter — ${escapeHtml(debtorName)}</title><style>${CSS}
@@ -7092,6 +7289,46 @@ async function _prefillDocumentTab() {
   setIfBlank('doc-disc-payoff',  fmtNum(fin.payoff_amount));
   setIfBlank('doc-disc-perdiem', fmtNum(fin.per_diem));
   setIfBlank('doc-demand-pastdue', fmtNum(fin.amount_past_due));
+
+  // Build address checkboxes for demand letter
+  _buildDemandAddressCheckboxes(m);
+}
+
+function _buildDemandAddressCheckboxes(m) {
+  const addrs = window._matterAddresses || [];
+  const debtorAddrs   = addrs.filter(a => a.party === 'debtor');
+  const codebtorAddrs = addrs.filter(a => a.party === 'codebtor');
+
+  // Fallback to matter fields if no addresses in table
+  if (!debtorAddrs.length && m.debtor_address) {
+    debtorAddrs.push({ id: 'fallback-debtor', label: 'Mailing', address: m.debtor_address, is_primary: true, party: 'debtor' });
+  }
+
+  const renderGroup = (label, addrs, prefix) => {
+    if (!addrs.length) return '';
+    const rows = addrs.map((a, i) => `
+      <div style="display:flex;align-items:center;gap:6px;padding:3px 0;">
+        <input type="checkbox" id="doc-addr-cb-${prefix}-${i}" name="doc-addr-${prefix}" value="${i}" ${a.is_primary ? 'checked' : ''} />
+        <label for="doc-addr-cb-${prefix}-${i}" style="font-size:11px;cursor:pointer;">
+          <span style="font-size:9px;padding:1px 4px;background:var(--cream);border:1px solid var(--rule);border-radius:2px;color:var(--muted);">${escapeHtml(a.label)}</span>
+          ${escapeHtml(a.address)}
+        </label>
+        <input type="text" placeholder="CMRR #" id="doc-addr-cmrr-${prefix}-${i}"
+          style="font-family:var(--font-mono);font-size:10px;width:180px;margin-left:4px;padding:2px 5px;border:1px solid var(--rule);" />
+      </div>`).join('');
+    return `<div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:8px 0 4px;">${label}</div>${rows}`;
+  };
+
+  const html = renderGroup('Debtor addresses', debtorAddrs, 'deb')
+             + (codebtorAddrs.length ? renderGroup('Co-debtor addresses', codebtorAddrs, 'co') : '');
+
+  const wrap = document.getElementById('doc-demand-addr-checkboxes');
+  if (wrap) {
+    wrap.innerHTML = html || '<span style="font-size:11px;color:var(--muted);">No addresses on file — add them in the Overview tab</span>';
+    // Store for generator access
+    wrap._debtorAddrs   = debtorAddrs;
+    wrap._codebtorAddrs = codebtorAddrs;
+  }
 }
 
 // Render the activity-filter pill bar based on the categories present in window._currentEntries
