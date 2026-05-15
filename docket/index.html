@@ -2640,6 +2640,10 @@ ENTRY [MM/DD/YY] [INITIALS]: [status note]</pre>
           <div class="form-group"><label>Our file # (1208-XXX) <span style="color:var(--danger);">*</span></label><input id="ec-our_file_no" /></div>
           <div class="form-group"><label>Client file #</label><input id="ec-client_file_no" /></div>
         </div>
+        <div class="form-row">
+          <div class="form-group"><label>Cause No.</label><input id="ec-cause_no" placeholder="e.g. 2632B" style="font-family:var(--font-mono);" /></div>
+          <div class="form-group"></div>
+        </div>
       <div class="form-row">
         <div class="form-group"><label>Assignor</label><input id="ec-assignor" placeholder="VyStar CU" /></div>
         <div class="form-group"><label>Rep</label><select id="ec-rep_name" data-rep-select data-rep-blank="none" onchange="handleRepSelectChange(this);"></select></div>
@@ -6118,6 +6122,7 @@ async function openDetail(id, opts) {
         <div class="detail-col">
           <div class="field-row"><span class="field-label">Our file #</span><span class="field-value" style="font-family:var(--font-mono);">${escapeHtml(m.our_file_no||'—')}</span></div>
           <div class="field-row"><span class="field-label">Client file #</span><span class="field-value" style="font-family:var(--font-mono);">${escapeHtml(m.client_file_no||'—')}</span></div>
+          <div class="field-row"><span class="field-label">Cause No.</span><span class="field-value" style="font-family:var(--font-mono);">${escapeHtml(m.cause_no||'—')}</span></div>
           <div class="field-row"><span class="field-label">Assignor</span><span class="field-value">${escapeHtml(m.assignor||'—')}</span></div>
           <div class="field-row"><span class="field-label">Debtor address</span><span class="field-value">${escapeHtml(m.debtor_address||'—')}</span></div>
           <div class="field-row"><span class="field-label">MH address</span><span class="field-value">${escapeHtml(m.mh_address||'—')}</span></div>
@@ -6484,9 +6489,15 @@ async function openDetail(id, opts) {
 // Merges matter data with standard firm document templates and opens a
 // print-ready HTML window. Uses actual Handley file text as the template base.
 
-function generateDocument(type) {
+async function generateDocument(type) {
   const m = allMatters.find(x => x.id === currentMatterId);
   if (!m) { toast('No matter loaded', 'error'); return; }
+
+  // Pull latest financials from matter_financials table
+  const { data: finRows } = await db.from('matter_financials')
+    .select('*').eq('matter_id', m.id)
+    .order('snapshot_date', { ascending: false }).limit(1);
+  const fin = (finRows && finRows.length) ? finRows[0] : {};
 
   // Helper: get field value or placeholder
   const v = (val, fallback) => (val && String(val).trim()) || fallback || '_______________';
@@ -6502,14 +6513,14 @@ function generateDocument(type) {
   const fileNo         = v(m.our_file_no);
   const clientFileNo   = v(m.client_file_no);
   const loanDate       = m.date_of_loan ? fmtDate(m.date_of_loan) : '_______________';
-  const origAMF        = m.original_amf ? fmtMoney(m.original_amf) : '_______________';
+  const origAMF        = (m.original_amf || fin.original_amf) ? fmtMoney(m.original_amf || fin.original_amf) : '_______________';
   const homeYear       = v(m.home_year);
   const homeMake       = v(m.home_make);
   const homeModel      = v(m.home_model);
   const homeSize       = m.home_size ? '(' + m.home_size + ')' : '';
   const homeSerial     = v(m.home_serial_no);
   const assignor       = v(m.assignor, 'Credit Union of Texas');
-  const loanAcctNo     = v(m.loan_account_no);
+  const loanAcctNo     = v(m.loan_account_no || fin.loan_account_no);
 
   // Client-specific
   const isTriad      = (m.client_code === 'TRIAD');
@@ -6875,6 +6886,34 @@ function switchCaseTab(tab) {
   document.querySelectorAll('.case-tab-panel').forEach(p => {
     p.classList.toggle('active', p.id === 'case-tab-' + tab);
   });
+  if (tab === 'documents') _prefillDocumentTab(); // async — fires and forgets, fills fields as data arrives
+}
+
+async function _prefillDocumentTab() {
+  const m = allMatters.find(x => x.id === currentMatterId);
+  if (!m) return;
+  const causeNo = m.cause_no || '';
+  // Auto-fill Cause No into all discovery/disclosure forms
+  ['doc-disc-causeno','doc-rogs-causeno','doc-rfp-causeno','doc-rfa-causeno'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el.value) el.value = causeNo;
+  });
+  // Auto-fill today's date into service date fields if blank
+  const today = new Date().toISOString().split('T')[0];
+  ['doc-disc-date','doc-rogs-date','doc-rfp-date','doc-rfa-date'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el.value) el.value = today;
+  });
+  // Pull financials and pre-fill disclosure fields
+  const { data: finRows } = await db.from('matter_financials')
+    .select('*').eq('matter_id', m.id)
+    .order('snapshot_date', { ascending: false }).limit(1);
+  const fin = (finRows && finRows.length) ? finRows[0] : {};
+  const fmtNum = n => n != null ? Number(n).toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2}) : '';
+  const setIfBlank = (id, val) => { const el = document.getElementById(id); if (el && !el.value && val) el.value = val; };
+  setIfBlank('doc-disc-payoff',  fmtNum(fin.payoff_amount));
+  setIfBlank('doc-disc-perdiem', fmtNum(fin.per_diem));
+  setIfBlank('doc-demand-pastdue', fmtNum(fin.amount_past_due));
 }
 
 // Render the activity-filter pill bar based on the categories present in window._currentEntries
@@ -11299,7 +11338,7 @@ const EDIT_CASE_FIELDS = [
   'debtor_address', 'mh_address', 'debtor_phone', 'debtor_email', 'co_debtor_address', 'client_notes',
   // Loan / borrower
   'dob', 'ssn_last4', 'co_dob', 'co_ssn_last4', 'co_debtor_phone', 'co_debtor_email',
-  'loan_account_no', 'loan_type', 'date_of_loan', 'original_amf',
+  'cause_no', 'loan_account_no', 'loan_type', 'date_of_loan', 'original_amf',
   'mhp_name', 'reason_for_default', 'requested_by', 'requested_date',
   'legal_description',
   // Home
