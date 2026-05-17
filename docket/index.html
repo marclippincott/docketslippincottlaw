@@ -6696,9 +6696,11 @@ async function openDetail(id, opts) {
         <div class="card" style="padding:14px 16px;">
           <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#9878; MSJ — Traditional</div>
           <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Traditional Motion for Summary Judgment (TRCP 166a(a)/(b)) + Order</div>
-          <div style="display:flex;gap:6px;margin-top:auto;">
-            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateMSJ('traditional')">&#x1F4C4; Motion</button>
-            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateMSJ('traditional_order')">&#x1F4C4; Order</button>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:auto;">
+            <button class="btn btn-primary btn-sm" onclick="generateMSJ('traditional')">&#x1F5A8; Motion</button>
+            <button class="btn btn-primary btn-sm" onclick="generateMSJ('traditional','word')">&#x1F4C4; Motion .doc</button>
+            <button class="btn btn-primary btn-sm" onclick="generateMSJ('traditional_order')">&#x1F5A8; Order</button>
+            <button class="btn btn-primary btn-sm" onclick="generateMSJ('traditional_order','word')">&#x1F4C4; Order .doc</button>
           </div>
         </div>
 
@@ -6706,9 +6708,11 @@ async function openDetail(id, opts) {
         <div class="card" style="padding:14px 16px;">
           <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#9878; MSJ — No-Evidence</div>
           <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">No-Evidence Motion for Summary Judgment (TRCP 166a(i)) + Order</div>
-          <div style="display:flex;gap:6px;margin-top:auto;">
-            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateMSJ('ne')">&#x1F4C4; Motion</button>
-            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateMSJ('ne_order')">&#x1F4C4; Order</button>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:auto;">
+            <button class="btn btn-primary btn-sm" onclick="generateMSJ('ne')">&#x1F5A8; Motion</button>
+            <button class="btn btn-primary btn-sm" onclick="generateMSJ('ne','word')">&#x1F4C4; Motion .doc</button>
+            <button class="btn btn-primary btn-sm" onclick="generateMSJ('ne_order')">&#x1F5A8; Order</button>
+            <button class="btn btn-primary btn-sm" onclick="generateMSJ('ne_order','word')">&#x1F4C4; Order .doc</button>
           </div>
         </div>
 
@@ -6716,9 +6720,11 @@ async function openDetail(id, opts) {
         <div class="card" style="padding:14px 16px;">
           <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#9878; MSJ — Combined</div>
           <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Traditional &amp; No-Evidence combined in one motion + Order</div>
-          <div style="display:flex;gap:6px;margin-top:auto;">
-            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateMSJ('combined')">&#x1F4C4; Motion</button>
-            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateMSJ('combined_order')">&#x1F4C4; Order</button>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:auto;">
+            <button class="btn btn-primary btn-sm" onclick="generateMSJ('combined')">&#x1F5A8; Motion</button>
+            <button class="btn btn-primary btn-sm" onclick="generateMSJ('combined','word')">&#x1F4C4; Motion .doc</button>
+            <button class="btn btn-primary btn-sm" onclick="generateMSJ('combined_order')">&#x1F5A8; Order</button>
+            <button class="btn btn-primary btn-sm" onclick="generateMSJ('combined_order','word')">&#x1F4C4; Order .doc</button>
           </div>
         </div>
 
@@ -7662,7 +7668,7 @@ ${[
 // Generates Traditional MSJ, No-Evidence MSJ, Combined MSJ, and their Orders
 // as print-ready HTML windows. All content is correct Texas law (TRCP 166a).
 // No bankruptcy references. Cause No. required (post-suit document).
-async function generateMSJ(variant) {
+async function generateMSJ(variant, format) {
   const m = allMatters.find(x => x.id === currentMatterId);
   if (!m) { toast('No matter loaded', 'error'); return; }
   if (!m.cause_no) { toast('Enter the Cause No. before generating an MSJ', 'error'); return; }
@@ -8062,33 +8068,74 @@ async function generateMSJ(variant) {
   // ── Assemble and open window ───────────────────────────────────────────────
   let bodyContent = '';
   let title = '';
+  let fileLabel = '';
 
   if (variant === 'traditional') {
     title = 'Traditional MSJ — ' + debtorName;
+    fileLabel = 'MSJ_Traditional';
     bodyContent = caption + traditionalMotionBody + '\n' + sigBlock + '\n' + certOfService;
   } else if (variant === 'traditional_order') {
     title = 'Order Granting Traditional MSJ — ' + debtorName;
+    fileLabel = 'MSJ_Traditional_Order';
     bodyContent = caption + orderBody('traditional');
   } else if (variant === 'ne') {
     title = 'No-Evidence MSJ — ' + debtorName;
+    fileLabel = 'MSJ_NoEvidence';
     bodyContent = caption + neMotionBody + '\n' + sigBlock + '\n' + certOfService;
   } else if (variant === 'ne_order') {
     title = 'Order Granting No-Evidence MSJ — ' + debtorName;
+    fileLabel = 'MSJ_NoEvidence_Order';
     bodyContent = caption + orderBody('ne');
   } else if (variant === 'combined') {
     title = 'Combined Traditional & No-Evidence MSJ — ' + debtorName;
+    fileLabel = 'MSJ_Combined';
     bodyContent = caption + combinedMotionBody + '\n' + sigBlock + '\n' + certOfService;
   } else if (variant === 'combined_order') {
     title = 'Order Granting Combined MSJ — ' + debtorName;
+    fileLabel = 'MSJ_Combined_Order';
     bodyContent = caption + orderBody('combined');
   }
 
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escapeHtml(title)}</title><style>${CSS}</style></head><body>${printBar}<div id="doc-wrap">${bodyContent}</div></body></html>`;
+  const fileNo = m.our_file_no ? m.our_file_no.replace(/[^a-z0-9]/gi, '_') : 'doc';
 
-  const win = window.open('', '_blank');
-  if (!win) { toast('Pop-up blocked — allow pop-ups for this site', 'error'); return; }
-  win.document.write(html);
-  win.document.close();
+  // Word-compatible HTML — uses mso styles for proper margins and Times New Roman
+  const wordHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="UTF-8"><title>${escapeHtml(title)}</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+<style>
+  @page { margin: 1in 1in 1in 1.5in; }
+  body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 2; color: #000; }
+  h2 { font-size: 12pt; text-align: center; text-transform: uppercase; font-weight: bold; margin: 0; line-height: 2; }
+  .cause-no { text-align: center; font-weight: bold; }
+  p { margin: 0; }
+  .pi { text-indent: 0.5in; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 12pt; }
+  td { vertical-align: top; padding: 2pt 0; line-height: 2; }
+  .caption-right { padding-left: 12pt; border-left: 2pt solid #000; }
+  .sig { margin-top: 36pt; }
+  .sig-line { display: inline-block; margin-top: 48pt; border-top: 1px solid #000; width: 280pt; }
+  .cert { page-break-before: always; }
+</style>
+</head><body>${bodyContent}</body></html>`;
+
+  if (format === 'word') {
+    const blob = new Blob([wordHtml], { type: 'application/msword' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = fileLabel + '_' + fileNo + '.doc';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast(fileLabel + ' downloaded');
+  } else {
+    const printHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escapeHtml(title)}</title><style>${CSS}</style></head><body>${printBar}<div id="doc-wrap">${bodyContent}</div></body></html>`;
+    const win = window.open('', '_blank');
+    if (!win) { toast('Pop-up blocked — allow pop-ups for this site', 'error'); return; }
+    win.document.write(printHtml);
+    win.document.close();
+  }
 }
 // ── END MSJ GENERATOR ─────────────────────────────────────────────────────────
 
