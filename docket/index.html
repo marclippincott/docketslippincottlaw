@@ -6692,13 +6692,33 @@ async function openDetail(id, opts) {
           </div>
         </div>
 
-        <!-- MSJ -->
+        <!-- MSJ Traditional -->
         <div class="card" style="padding:14px 16px;">
-          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#9878; Motion for Summary Judgment</div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Traditional &amp; No-Evidence MSJ + Order Granting</div>
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#9878; MSJ — Traditional</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Traditional Motion for Summary Judgment (TRCP 166a(a)/(b)) + Order</div>
           <div style="display:flex;gap:6px;margin-top:auto;">
-            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDocWord('msj')">&#x1F4C4; MSJ</button>
-            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateDocWord('msj_order')">&#x1F4C4; Order</button>
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateMSJ('traditional')">&#x1F4C4; Motion</button>
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateMSJ('traditional_order')">&#x1F4C4; Order</button>
+          </div>
+        </div>
+
+        <!-- MSJ No-Evidence -->
+        <div class="card" style="padding:14px 16px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#9878; MSJ — No-Evidence</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">No-Evidence Motion for Summary Judgment (TRCP 166a(i)) + Order</div>
+          <div style="display:flex;gap:6px;margin-top:auto;">
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateMSJ('ne')">&#x1F4C4; Motion</button>
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateMSJ('ne_order')">&#x1F4C4; Order</button>
+          </div>
+        </div>
+
+        <!-- MSJ Combined -->
+        <div class="card" style="padding:14px 16px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px;">&#9878; MSJ — Combined</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px;">Traditional &amp; No-Evidence combined in one motion + Order</div>
+          <div style="display:flex;gap:6px;margin-top:auto;">
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateMSJ('combined')">&#x1F4C4; Motion</button>
+            <button class="btn btn-primary btn-sm" style="flex:1;" onclick="generateMSJ('combined_order')">&#x1F4C4; Order</button>
           </div>
         </div>
 
@@ -7645,6 +7665,440 @@ ${[
   }
 }
 // ── END DOCUMENT GENERATION ───────────────────────────────────────────────────
+
+// ── MSJ GENERATOR ─────────────────────────────────────────────────────────────
+// Generates Traditional MSJ, No-Evidence MSJ, Combined MSJ, and their Orders
+// as print-ready HTML windows. All content is correct Texas law (TRCP 166a).
+// No bankruptcy references. Cause No. required (post-suit document).
+async function generateMSJ(variant) {
+  const m = allMatters.find(x => x.id === currentMatterId);
+  if (!m) { toast('No matter loaded', 'error'); return; }
+  if (!m.cause_no) { toast('Enter the Cause No. before generating an MSJ', 'error'); return; }
+
+  // ── Matter fields ──────────────────────────────────────────────────────────
+  const causeNo      = m.cause_no || '';
+  const courtStr     = (m.court && m.county) ? m.court + ', ' + m.county + ' County, Texas'
+                     : m.court || m.county || '_____ JUDICIAL DISTRICT COURT, __________ COUNTY, TEXAS';
+  const courtParts   = courtStr.split(',').map(s => s.trim());
+  const courtLine    = courtParts[0] || '_____ JUDICIAL DISTRICT COURT';
+  const countyLine   = courtParts.slice(1).join(', ').trim() || '__________ COUNTY, TEXAS';
+
+  const isTriad      = m.client_code === 'TRIAD';
+  const isTP         = m.client_code === 'TRANSPECOS';
+  const clientName   = isTriad ? 'Triad Financial Services, Inc.' : isTP ? 'TransPecos Bank' : (m.client_code || '_______________');
+  const creditor     = m.assignor || clientName;
+  const plaintiff    = isTriad ? 'Triad Financial Services, Inc., as servicer for ' + creditor : clientName;
+  const plaintiffShort = isTriad ? 'Triad Financial Services, Inc.' : clientName;
+
+  const debtorName   = m.debtor_name_full || m.debtor_name || '_______________';
+  const codebtorName = m.co_debtor_name_full || m.co_debtor_name || '';
+  const defendants   = debtorName + (codebtorName ? ' and ' + codebtorName : '');
+  const defPlural    = codebtorName ? true : false;
+  const Def          = defPlural ? 'Defendants' : 'Defendant';
+  const def          = defPlural ? 'defendants' : 'defendant';
+  const they         = defPlural ? 'they' : 'he or she';
+  const their        = defPlural ? 'their' : 'his or her';
+  const them         = defPlural ? 'them' : 'him or her';
+
+  const { data: finRows } = await db.from('matter_financials')
+    .select('*').eq('matter_id', m.id)
+    .order('snapshot_date', { ascending: false }).limit(1);
+  const fin = (finRows && finRows.length) ? finRows[0] : {};
+  const fmtMoney = n => n != null ? '$' + Number(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '_______________';
+  const fmtDate  = d => d ? new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}) : '_______________';
+  const today    = fmtDate(new Date().toISOString().split('T')[0]);
+
+  const loanDate   = fmtDate(m.date_of_loan);
+  const principal  = fmtMoney(m.original_amf || fin.original_amf);
+  const homeYear   = m.home_year || '____';
+  const homeMake   = m.home_make || '____________';
+  const homeModel  = m.home_model || '____________';
+  const homeSize   = m.home_size ? '(' + m.home_size + ')' : '';
+  const homeSerial = m.home_serial_no || '_______________';
+  const homeLabel  = m.home_label_no || m.home_serial_no || '_______________';
+  const homeDesc   = [homeYear, homeMake, homeModel, homeSize].filter(Boolean).join(' ').replace(/\s+/g,' ').trim();
+  const mhAddr     = m.mh_address || m.debtor_address || '_______________';
+
+  const noteDesc   = `Promissory Note and Security Agreement – Manufactured Home dated ${loanDate}, in the original principal sum of ${principal}`;
+  const collDesc   = `${homeDesc}, Serial Number ${homeSerial}, HUD Label No. ${homeLabel}, located at ${mhAddr}`;
+
+  // ── CSS ────────────────────────────────────────────────────────────────────
+  const CSS = `
+    * { box-sizing: border-box; }
+    body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 2; margin: 0; color: #000; background: #fff; }
+    #doc-wrap { max-width: 8.5in; margin: 0 auto; padding: 1in 1in 1in 1.5in; }
+    h2 { font-size: 12pt; text-align: center; text-transform: uppercase; font-weight: bold; margin: 0 0 0; line-height: 2; }
+    .cause-no { text-align: center; font-weight: bold; margin: 0; }
+    p { margin: 0; }
+    .pi { text-indent: 0.5in; }
+    .sig { margin-top: 36pt; }
+    .sig-line { display: inline-block; margin-top: 48pt; border-top: 1px solid #000; width: 280pt; }
+    .cert { page-break-before: always; }
+    .caption-table { width: 100%; border-collapse: collapse; margin-bottom: 6pt; }
+    .caption-left { width: 50%; padding: 2pt 0; vertical-align: top; line-height: 2; }
+    .caption-right { width: 50%; padding: 2pt 12pt; vertical-align: top; border-left: 2pt solid #000; line-height: 2; }
+    #print-bar { position:fixed; top:0; left:0; right:0; background:#1a1612; color:#f5f0e8; padding:8px 16px;
+      display:flex; align-items:center; gap:12px; font-family:Arial,sans-serif; font-size:12px; z-index:999; box-shadow:0 2px 8px rgba(0,0,0,.4); }
+    #print-bar button { background:#8b2500; color:white; border:none; padding:6px 16px; font-size:12px; cursor:pointer; font-family:Arial,sans-serif; }
+    #print-bar button:hover { background:#a83000; }
+    #print-bar .close-btn { background:rgba(255,255,255,.1); margin-left:auto; }
+    @media print { #print-bar { display:none!important; } body { margin:0; } #doc-wrap { padding:1in 1in 1in 1.5in; } }
+  `;
+
+  const printBar = `<div id="print-bar"><button onclick="window.print()">&#x1F5A8; Print / Save as PDF</button><span style="opacity:.6;font-size:11px;">In print dialog choose &ldquo;Save as PDF&rdquo; &mdash; set margins to Minimum</span><button class="close-btn" onclick="document.getElementById('print-bar').style.display='none'">&#x2715; Close</button></div>`;
+
+  // ── Caption ────────────────────────────────────────────────────────────────
+  const plaintiffCaption = isTriad
+    ? `TRIAD FINANCIAL SERVICES, INC.,<br>as servicer for ${escapeHtml(creditor)},`
+    : escapeHtml(clientName) + ',';
+
+  const caption = `<table class="caption-table">
+  <tr>
+    <td class="caption-left">
+      ${plaintiffCaption}<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Plaintiff,<br>
+      <br>v.<br><br>
+      ${escapeHtml(defendants)},<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;${Def}.
+    </td>
+    <td class="caption-right">
+      §<br>§<br>§<br>§<br>§<br>§<br>§<br>§<br>§
+      <div class="cause-no">CAUSE NO. ${escapeHtml(causeNo)}</div>
+      <br>
+      IN THE ${escapeHtml(courtLine.toUpperCase())}<br>
+      <br>
+      ${escapeHtml(countyLine.toUpperCase())}
+    </td>
+  </tr>
+</table>`;
+
+  // ── Signature block ────────────────────────────────────────────────────────
+  const sigBlock = `<div class="sig">
+  <div>Respectfully submitted,</div>
+  <br>
+  <div>THE LIPPINCOTT LAW FIRM, PLLC</div>
+  <div>11507 Susie St.</div>
+  <div>Austin, Texas 78748</div>
+  <div>Telephone: (512) 472-2300</div>
+  <div>Telecopier: (512) 472-2303</div>
+  <br>
+  <div>By: /s/ Marc L. Lippincott</div>
+  <div class="sig-line"></div><br>
+  <div>Marc L. Lippincott</div>
+  <div>State Bar No. 24002480</div>
+  <div>Marc@thelippincottlawfirm.com</div>
+  <br>
+  <div>ATTORNEY FOR PLAINTIFF</div>
+</div>`;
+
+  // ── Certificate of Service ─────────────────────────────────────────────────
+  const debtorAddr = m.debtor_address || '_______________';
+  const certOfService = `<div class="cert">
+  <h2>CERTIFICATE OF SERVICE</h2>
+  <p class="pi">I hereby certify that a true and correct copy of the foregoing document has been served upon all attorneys of record or parties appearing pro se in accordance with Texas Rule of Civil Procedure 21a on ${today}.</p>
+  <div class="sig">
+    <div>By: /s/ Marc L. Lippincott</div>
+    <div class="sig-line"></div><br>
+    <div>Marc L. Lippincott</div>
+  </div>
+</div>`;
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // TRADITIONAL MSJ — TRCP 166a(a)/(b)
+  // ══════════════════════════════════════════════════════════════════════════
+  const traditionalMotionBody = `
+<h2>PLAINTIFF'S TRADITIONAL MOTION FOR SUMMARY JUDGMENT</h2>
+<br>
+<p>TO THE HONORABLE COURT:</p>
+<br>
+<p class="pi">Plaintiff, ${escapeHtml(plaintiff)}, moves the Court pursuant to Rule 166a(a) and (b) of the Texas Rules of Civil Procedure for summary judgment against ${Def}, ${escapeHtml(defendants)}, and in support thereof would respectfully show the Court as follows:</p>
+<br>
+<h2>I.<br>SUMMARY OF ARGUMENT</h2>
+<br>
+<p class="pi">1.&nbsp;&nbsp;This is a suit for breach of contract and possession of collateral. There is no genuine issue as to any material fact, and Plaintiff is entitled to judgment as a matter of law. The summary judgment evidence establishes that ${Def} executed the Note and Security Agreement, received the loan proceeds, defaulted on the payment obligations, and have failed to cure the default despite proper demand. Plaintiff is entitled to judgment for the unpaid balance, prejudgment interest, attorney's fees, and possession of the Manufactured Home.</p>
+<br>
+<h2>II.<br>STATEMENT OF FACTS</h2>
+<br>
+<p class="pi">2.&nbsp;&nbsp;On or about ${escapeHtml(loanDate)}, ${Def}, ${escapeHtml(defendants)}, executed that certain ${escapeHtml(noteDesc)} (the "Note and Security Agreement"), a true and correct copy of which is attached to the Affidavit of ${isTriad ? 'Matthew Shelar' : 'Plaintiff\'s representative'} filed in support of this Motion.</p>
+<br>
+<p class="pi">3.&nbsp;&nbsp;The Note and Security Agreement is secured by a security interest in that certain ${escapeHtml(collDesc)} (the "Manufactured Home").</p>
+<br>
+<p class="pi">4.&nbsp;&nbsp;${Def} received valuable consideration for the execution of the Note and Security Agreement.</p>
+<br>
+<p class="pi">5.&nbsp;&nbsp;${escapeHtml(plaintiffShort)} is the holder of the Note and Security Agreement and the holder of a valid, perfected security interest in the Manufactured Home.</p>
+<br>
+<p class="pi">6.&nbsp;&nbsp;${Def} defaulted under the terms of the Note and Security Agreement by failing to make the required monthly installment payments when due. ${Def} ha${defPlural?'ve':'s'} failed and refused to cure the default.</p>
+<br>
+<p class="pi">7.&nbsp;&nbsp;As a result of ${their} default, the entire unpaid principal balance, together with accrued interest, late charges, and other authorized charges, has been accelerated and is now due and payable in full.</p>
+<br>
+<p class="pi">8.&nbsp;&nbsp;${escapeHtml(plaintiffShort)} has been required to retain the services of The Lippincott Law Firm, PLLC, to prosecute this action, and has agreed to pay reasonable and necessary attorney's fees and expenses.</p>
+<br>
+<h2>III.<br>ARGUMENT AND AUTHORITIES</h2>
+<br>
+<h2>A.<br>Standard for Traditional Summary Judgment</h2>
+<br>
+<p class="pi">9.&nbsp;&nbsp;A party is entitled to traditional summary judgment if the pleadings, depositions, admissions, and affidavits on file show that there is no genuine issue of material fact and the movant is entitled to judgment as a matter of law. Tex. R. Civ. P. 166a(c). A defendant is entitled to summary judgment by conclusively negating at least one essential element of the plaintiff's cause of action or by conclusively establishing each element of an affirmative defense. Once the movant establishes its right to summary judgment as a matter of law, the burden shifts to the nonmovant to raise a genuine issue of material fact.</p>
+<br>
+<h2>B.<br>Breach of Contract</h2>
+<br>
+<p class="pi">10.&nbsp;&nbsp;The elements of a breach of contract claim are: (1) the existence of a valid contract; (2) performance or tendered performance by the plaintiff; (3) breach of the contract by the defendant; and (4) damages sustained by the plaintiff as a result of the breach. USAA Tex. Lloyds Co. v. Menchaca, 545 S.W.3d 479, 501 n.21 (Tex. 2018).</p>
+<br>
+<p class="pi">11.&nbsp;&nbsp;The summary judgment evidence conclusively establishes each element: (a) ${Def} executed the Note and Security Agreement, which constitutes a valid and enforceable contract; (b) ${escapeHtml(plaintiffShort)} fully performed its obligations by advancing the loan proceeds; (c) ${Def} breached the contract by failing to make the required monthly installment payments; and (d) ${escapeHtml(plaintiffShort)} has been damaged in an amount equal to the unpaid principal balance, accrued interest, late charges, and other charges authorized under the Note and Security Agreement.</p>
+<br>
+<h2>C.<br>Possession of Collateral</h2>
+<br>
+<p class="pi">12.&nbsp;&nbsp;The Note and Security Agreement grants ${escapeHtml(plaintiffShort)} a valid, perfected security interest in the Manufactured Home. Upon ${Def}'s default, ${escapeHtml(plaintiffShort)} is entitled to possession of the Manufactured Home pursuant to the terms of the Note and Security Agreement and applicable provisions of the Texas Business and Commerce Code.</p>
+<br>
+<h2>D.<br>Attorney's Fees</h2>
+<br>
+<p class="pi">13.&nbsp;&nbsp;Plaintiff is entitled to recover reasonable and necessary attorney's fees pursuant to Section 38.001(b)(8) of the Texas Civil Practice and Remedies Code, which authorizes recovery of attorney's fees in a suit founded on a written contract. TEX. CIV. PRAC. &amp; REM. CODE § 38.001(b)(8). Plaintiff made proper presentment of its claim to ${Def} more than thirty (30) days before the filing of this suit, and ${Def} failed to tender payment. The Affidavit of Attorney Marc L. Lippincott, filed in support of this Motion, establishes the reasonableness and necessity of the attorney's fees incurred.</p>
+<br>
+<h2>IV.<br>SUMMARY JUDGMENT EVIDENCE</h2>
+<br>
+<p class="pi">14.&nbsp;&nbsp;In support of this Motion, Plaintiff relies upon the following summary judgment evidence, attached hereto and incorporated herein by reference:</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a.&nbsp;&nbsp;Affidavit of ${isTriad ? 'Matthew Shelar, Asset Recovery Specialist, Triad Financial Services, Inc.' : 'Plaintiff\'s authorized representative'}, with attached exhibits, including a true and correct copy of the Note and Security Agreement;</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;b.&nbsp;&nbsp;Affidavit of Marc L. Lippincott regarding attorney's fees;</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;c.&nbsp;&nbsp;All pleadings, admissions, and discovery responses on file in this cause; and</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;d.&nbsp;&nbsp;Any other summary judgment evidence submitted prior to or at the hearing on this Motion.</p>
+<br>
+<h2>V.<br>PRAYER</h2>
+<br>
+<p class="pi">15.&nbsp;&nbsp;WHEREFORE, PREMISES CONSIDERED, Plaintiff, ${escapeHtml(plaintiff)}, respectfully prays that the Court grant this Motion for Summary Judgment and enter judgment in favor of Plaintiff and against ${Def}, ${escapeHtml(defendants)}, jointly and severally, for:</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a.&nbsp;&nbsp;The unpaid principal balance, accrued interest, late charges, and other authorized charges due under the Note and Security Agreement;</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;b.&nbsp;&nbsp;Prejudgment interest at the rate provided in the Note and Security Agreement;</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;c.&nbsp;&nbsp;Reasonable and necessary attorney's fees through trial and all levels of appeal;</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;d.&nbsp;&nbsp;Possession of the Manufactured Home, being that certain ${escapeHtml(collDesc)};</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;e.&nbsp;&nbsp;Post-judgment interest at the rate allowed by law; and</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;f.&nbsp;&nbsp;Such other and further relief, both general and special, at law and in equity, to which Plaintiff may be justly entitled.</p>`;
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // NO-EVIDENCE MSJ — TRCP 166a(i)
+  // ══════════════════════════════════════════════════════════════════════════
+  const neMotionBody = `
+<h2>PLAINTIFF'S NO-EVIDENCE MOTION FOR SUMMARY JUDGMENT</h2>
+<br>
+<p>TO THE HONORABLE COURT:</p>
+<br>
+<p class="pi">Plaintiff, ${escapeHtml(plaintiff)}, moves the Court pursuant to Rule 166a(i) of the Texas Rules of Civil Procedure for no-evidence summary judgment against ${Def}, ${escapeHtml(defendants)}, and in support thereof would respectfully show the Court as follows:</p>
+<br>
+<h2>I.<br>INTRODUCTION</h2>
+<br>
+<p class="pi">1.&nbsp;&nbsp;After adequate time for discovery, there is no evidence of one or more essential elements of any defense that ${Def} ha${defPlural?'ve':'s'} asserted or could assert in this action. Plaintiff is therefore entitled to summary judgment as a matter of law pursuant to Texas Rule of Civil Procedure 166a(i).</p>
+<br>
+<h2>II.<br>STANDARD FOR NO-EVIDENCE SUMMARY JUDGMENT</h2>
+<br>
+<p class="pi">2.&nbsp;&nbsp;After adequate time for discovery, a party may move for summary judgment on the ground that there is no evidence of one or more essential elements of a claim or defense on which an adverse party would have the burden of proof at trial. Tex. R. Civ. P. 166a(i). The Court must grant the motion unless the respondent produces summary judgment evidence raising a genuine issue of material fact. Id.</p>
+<br>
+<p class="pi">3.&nbsp;&nbsp;A no-evidence summary judgment is essentially a directed verdict granted before trial, and the same legal sufficiency standard applies. King Ranch, Inc. v. Chapman, 118 S.W.3d 742, 750–51 (Tex. 2003). The nonmovant must produce more than a scintilla of evidence raising a genuine issue of material fact on each challenged element. Id. Less than a scintilla of evidence exists when the evidence is so weak as to do no more than create a mere surmise or suspicion of a fact. Id.</p>
+<br>
+<h2>III.<br>NO EVIDENCE OF ESSENTIAL ELEMENTS OF ANY DEFENSE</h2>
+<br>
+<p class="pi">4.&nbsp;&nbsp;Adequate time for discovery has passed in this case. ${Def} ha${defPlural?'ve':'s'} not produced, and there is no evidence of, one or more essential elements of any defense to Plaintiff's claims, including but not limited to:</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a.&nbsp;&nbsp;<strong>No evidence that ${Def} did not execute the Note and Security Agreement.</strong> There is no evidence that ${escapeHtml(defendants)} did not execute the ${escapeHtml(noteDesc)};</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;b.&nbsp;&nbsp;<strong>No evidence of payment.</strong> There is no evidence that ${Def} ha${defPlural?'ve':'s'} made all payments required under the Note and Security Agreement or that the debt has been paid in full;</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;c.&nbsp;&nbsp;<strong>No evidence of any valid offset, credit, or defense.</strong> There is no evidence of any fact that would constitute a legal defense, offset, or credit to the amounts due and owing under the Note and Security Agreement;</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;d.&nbsp;&nbsp;<strong>No evidence of failure of consideration.</strong> There is no evidence that ${Def} did not receive valuable consideration for the execution of the Note and Security Agreement; and</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;e.&nbsp;&nbsp;<strong>No evidence of any defect in Plaintiff's security interest.</strong> There is no evidence that Plaintiff does not hold a valid, perfected security interest in the Manufactured Home.</p>
+<br>
+<h2>IV.<br>PRAYER</h2>
+<br>
+<p class="pi">5.&nbsp;&nbsp;WHEREFORE, PREMISES CONSIDERED, Plaintiff, ${escapeHtml(plaintiff)}, respectfully prays that the Court grant this No-Evidence Motion for Summary Judgment and enter judgment in favor of Plaintiff and against ${Def}, ${escapeHtml(defendants)}, jointly and severally, for:</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a.&nbsp;&nbsp;The unpaid principal balance, accrued interest, late charges, and other authorized charges due under the Note and Security Agreement;</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;b.&nbsp;&nbsp;Prejudgment interest at the rate provided in the Note and Security Agreement;</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;c.&nbsp;&nbsp;Reasonable and necessary attorney's fees through trial and all levels of appeal;</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;d.&nbsp;&nbsp;Possession of the Manufactured Home, being that certain ${escapeHtml(collDesc)};</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;e.&nbsp;&nbsp;Post-judgment interest at the rate allowed by law; and</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;f.&nbsp;&nbsp;Such other and further relief, both general and special, at law and in equity, to which Plaintiff may be justly entitled.</p>`;
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // COMBINED MOTION — Traditional + No-Evidence in one document
+  // ══════════════════════════════════════════════════════════════════════════
+  const combinedMotionBody = `
+<h2>PLAINTIFF'S TRADITIONAL AND NO-EVIDENCE<br>MOTION FOR SUMMARY JUDGMENT</h2>
+<br>
+<p>TO THE HONORABLE COURT:</p>
+<br>
+<p class="pi">Plaintiff, ${escapeHtml(plaintiff)}, moves the Court for summary judgment against ${Def}, ${escapeHtml(defendants)}, pursuant to Rules 166a(a), 166a(b), and 166a(i) of the Texas Rules of Civil Procedure, and in support thereof would respectfully show the Court as follows:</p>
+<br>
+<h2>I.<br>SUMMARY OF ARGUMENT</h2>
+<br>
+<p class="pi">1.&nbsp;&nbsp;This is a suit for breach of contract and possession of collateral. Plaintiff moves for summary judgment on both traditional and no-evidence grounds. On traditional grounds, the summary judgment evidence conclusively establishes every element of Plaintiff's claims. On no-evidence grounds, after adequate time for discovery, there is no evidence of one or more essential elements of any defense that ${Def} ha${defPlural?'ve':'s'} asserted or could assert. There is no genuine issue of material fact, and Plaintiff is entitled to judgment as a matter of law.</p>
+<br>
+<h2>II.<br>STATEMENT OF FACTS</h2>
+<br>
+<p class="pi">2.&nbsp;&nbsp;On or about ${escapeHtml(loanDate)}, ${Def}, ${escapeHtml(defendants)}, executed that certain ${escapeHtml(noteDesc)} (the "Note and Security Agreement"), a true and correct copy of which is attached to the Affidavit of ${isTriad ? 'Matthew Shelar, Asset Recovery Specialist, Triad Financial Services, Inc.' : 'Plaintiff\'s authorized representative'} filed in support of this Motion.</p>
+<br>
+<p class="pi">3.&nbsp;&nbsp;The Note and Security Agreement is secured by a security interest in that certain ${escapeHtml(collDesc)} (the "Manufactured Home").</p>
+<br>
+<p class="pi">4.&nbsp;&nbsp;${Def} received valuable consideration for the execution of the Note and Security Agreement.</p>
+<br>
+<p class="pi">5.&nbsp;&nbsp;${escapeHtml(plaintiffShort)} is the holder of the Note and Security Agreement and the holder of a valid, perfected security interest in the Manufactured Home.</p>
+<br>
+<p class="pi">6.&nbsp;&nbsp;${Def} defaulted under the terms of the Note and Security Agreement by failing to make the required monthly installment payments when due. ${Def} ha${defPlural?'ve':'s'} failed and refused to cure the default.</p>
+<br>
+<p class="pi">7.&nbsp;&nbsp;As a result of ${their} default, the entire unpaid principal balance, together with accrued interest, late charges, and other authorized charges, has been accelerated and is now due and payable in full.</p>
+<br>
+<p class="pi">8.&nbsp;&nbsp;${escapeHtml(plaintiffShort)} has been required to retain the services of The Lippincott Law Firm, PLLC, to prosecute this action, and has agreed to pay reasonable and necessary attorney's fees and expenses.</p>
+<br>
+<h2>III.<br>TRADITIONAL MOTION FOR SUMMARY JUDGMENT</h2>
+<br>
+<h2>A.<br>Standard for Traditional Summary Judgment</h2>
+<br>
+<p class="pi">9.&nbsp;&nbsp;A party is entitled to traditional summary judgment if there is no genuine issue as to any material fact and the movant is entitled to judgment as a matter of law. Tex. R. Civ. P. 166a(c). Once the movant establishes its right to summary judgment, the burden shifts to the nonmovant to raise a genuine issue of material fact.</p>
+<br>
+<h2>B.<br>Breach of Contract</h2>
+<br>
+<p class="pi">10.&nbsp;&nbsp;The elements of a breach of contract claim are: (1) the existence of a valid contract; (2) performance or tendered performance by the plaintiff; (3) breach of the contract by the defendant; and (4) damages sustained by the plaintiff as a result of the breach. USAA Tex. Lloyds Co. v. Menchaca, 545 S.W.3d 479, 501 n.21 (Tex. 2018).</p>
+<br>
+<p class="pi">11.&nbsp;&nbsp;The summary judgment evidence conclusively establishes each element: (a) ${Def} executed the Note and Security Agreement, which constitutes a valid and enforceable contract; (b) ${escapeHtml(plaintiffShort)} fully performed its obligations by advancing the loan proceeds; (c) ${Def} breached the contract by failing to make the required monthly installment payments; and (d) ${escapeHtml(plaintiffShort)} has been damaged in an amount equal to the unpaid principal balance, accrued interest, late charges, and other charges authorized under the Note and Security Agreement.</p>
+<br>
+<h2>C.<br>Possession of Collateral</h2>
+<br>
+<p class="pi">12.&nbsp;&nbsp;The Note and Security Agreement grants ${escapeHtml(plaintiffShort)} a valid, perfected security interest in the Manufactured Home. Upon ${Def}'s default, ${escapeHtml(plaintiffShort)} is entitled to possession of the Manufactured Home pursuant to the terms of the Note and Security Agreement and applicable provisions of the Texas Business and Commerce Code.</p>
+<br>
+<h2>D.<br>Attorney's Fees</h2>
+<br>
+<p class="pi">13.&nbsp;&nbsp;Plaintiff is entitled to recover reasonable and necessary attorney's fees pursuant to Section 38.001(b)(8) of the Texas Civil Practice and Remedies Code. TEX. CIV. PRAC. &amp; REM. CODE § 38.001(b)(8). Plaintiff made proper presentment of its claim to ${Def} more than thirty (30) days before the filing of this suit, and ${Def} failed to tender payment. The Affidavit of Attorney Marc L. Lippincott establishes the reasonableness and necessity of the attorney's fees incurred.</p>
+<br>
+<h2>IV.<br>NO-EVIDENCE MOTION FOR SUMMARY JUDGMENT</h2>
+<br>
+<h2>A.<br>Standard for No-Evidence Summary Judgment</h2>
+<br>
+<p class="pi">14.&nbsp;&nbsp;After adequate time for discovery, a party may move for summary judgment on the ground that there is no evidence of one or more essential elements of a claim or defense on which an adverse party would have the burden of proof at trial. Tex. R. Civ. P. 166a(i). The Court must grant the motion unless the respondent produces summary judgment evidence raising a genuine issue of material fact. A no-evidence summary judgment is essentially a directed verdict granted before trial. King Ranch, Inc. v. Chapman, 118 S.W.3d 742, 750–51 (Tex. 2003).</p>
+<br>
+<h2>B.<br>No Evidence of Essential Elements of Any Defense</h2>
+<br>
+<p class="pi">15.&nbsp;&nbsp;After adequate time for discovery, there is no evidence of one or more essential elements of any defense to Plaintiff's claims, including but not limited to:</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a.&nbsp;&nbsp;<strong>No evidence that ${Def} did not execute the Note and Security Agreement;</strong></p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;b.&nbsp;&nbsp;<strong>No evidence of payment in full</strong> of the amounts due under the Note and Security Agreement;</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;c.&nbsp;&nbsp;<strong>No evidence of any valid offset, credit, or affirmative defense</strong> to the amounts due and owing;</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;d.&nbsp;&nbsp;<strong>No evidence of failure of consideration;</strong> and</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;e.&nbsp;&nbsp;<strong>No evidence of any defect in Plaintiff's security interest</strong> in the Manufactured Home.</p>
+<br>
+<h2>V.<br>SUMMARY JUDGMENT EVIDENCE</h2>
+<br>
+<p class="pi">16.&nbsp;&nbsp;In support of this Motion, Plaintiff relies upon the following summary judgment evidence, attached hereto and incorporated herein by reference:</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a.&nbsp;&nbsp;Affidavit of ${isTriad ? 'Matthew Shelar, Asset Recovery Specialist, Triad Financial Services, Inc.' : 'Plaintiff\'s authorized representative'}, with attached exhibits including the Note and Security Agreement;</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;b.&nbsp;&nbsp;Affidavit of Marc L. Lippincott regarding attorney's fees;</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;c.&nbsp;&nbsp;All pleadings, admissions, and discovery responses on file in this cause; and</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;d.&nbsp;&nbsp;Any other summary judgment evidence submitted prior to or at the hearing on this Motion.</p>
+<br>
+<h2>VI.<br>PRAYER</h2>
+<br>
+<p class="pi">17.&nbsp;&nbsp;WHEREFORE, PREMISES CONSIDERED, Plaintiff, ${escapeHtml(plaintiff)}, respectfully prays that the Court grant this Motion for Summary Judgment and enter judgment in favor of Plaintiff and against ${Def}, ${escapeHtml(defendants)}, jointly and severally, for:</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a.&nbsp;&nbsp;The unpaid principal balance, accrued interest, late charges, and other authorized charges due under the Note and Security Agreement;</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;b.&nbsp;&nbsp;Prejudgment interest at the rate provided in the Note and Security Agreement;</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;c.&nbsp;&nbsp;Reasonable and necessary attorney's fees through trial and all levels of appeal;</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;d.&nbsp;&nbsp;Possession of the Manufactured Home, being that certain ${escapeHtml(collDesc)};</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;e.&nbsp;&nbsp;Post-judgment interest at the rate allowed by law; and</p>
+<br>
+<p class="pi">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;f.&nbsp;&nbsp;Such other and further relief, both general and special, at law and in equity, to which Plaintiff may be justly entitled.</p>`;
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ORDERS
+  // ══════════════════════════════════════════════════════════════════════════
+  const orderBody = (motionType) => {
+    const are = defPlural ? 'are' : 'is';
+    const motionLabel = motionType === 'traditional' ? 'Traditional Motion for Summary Judgment'
+                      : motionType === 'ne'          ? 'No-Evidence Motion for Summary Judgment'
+                      :                               'Traditional and No-Evidence Motion for Summary Judgment';
+    return `
+<h2>ORDER GRANTING PLAINTIFF'S ${motionLabel.toUpperCase()}</h2>
+<br>
+<p class="pi">On this day, the Court considered Plaintiff's ${motionLabel} filed by Plaintiff, ${escapeHtml(plaintiff)}. The Court, having reviewed the Motion, the summary judgment evidence on file, and the arguments of counsel, finds that the Motion is well-taken and should be GRANTED.</p>
+<br>
+<p class="pi">IT IS THEREFORE ORDERED, ADJUDGED, AND DECREED that Plaintiff's ${motionLabel} is hereby GRANTED.</p>
+<br>
+<p class="pi">IT IS FURTHER ORDERED that Plaintiff, ${escapeHtml(plaintiff)}, shall have and recover judgment against ${Def}, ${escapeHtml(defendants)}, jointly and severally, as follows:</p>
+<br>
+<p class="pi">1.&nbsp;&nbsp;Principal and interest in the amount of $____________, together with additional interest accruing at the rate of ____% per annum from the date of judgment until paid;</p>
+<br>
+<p class="pi">2.&nbsp;&nbsp;Reasonable and necessary attorney's fees in the amount of $____________ for services through trial, plus conditional appellate attorney's fees of $____________ in the event of an unsuccessful appeal to the Court of Appeals, and $____________ in the event of an unsuccessful appeal to the Supreme Court of Texas;</p>
+<br>
+<p class="pi">3.&nbsp;&nbsp;Possession of the Manufactured Home, being that certain ${escapeHtml(collDesc)}, and ${Def} ${are} hereby ORDERED to immediately vacate and surrender possession of the Manufactured Home to Plaintiff;</p>
+<br>
+<p class="pi">4.&nbsp;&nbsp;Post-judgment interest on all amounts at the rate allowed by law from the date of this judgment until paid; and</p>
+<br>
+<p class="pi">5.&nbsp;&nbsp;All costs of court taxed against ${Def}.</p>
+<br>
+<p class="pi">All other relief not expressly granted herein is hereby DENIED.</p>
+<br>
+<p class="pi">SIGNED this ______ day of ______________, 20____.</p>
+<br>
+<br>
+<div style="margin-left:3.5in;">
+  <div style="border-top:1px solid #000;width:3in;"></div>
+  <div>JUDGE PRESIDING</div>
+</div>`;
+  };
+
+  // ── Assemble and open window ───────────────────────────────────────────────
+  let bodyContent = '';
+  let title = '';
+
+  if (variant === 'traditional') {
+    title = 'Traditional MSJ — ' + debtorName;
+    bodyContent = caption + traditionalMotionBody + '\n' + sigBlock + '\n' + certOfService;
+  } else if (variant === 'traditional_order') {
+    title = 'Order Granting Traditional MSJ — ' + debtorName;
+    bodyContent = caption + orderBody('traditional');
+  } else if (variant === 'ne') {
+    title = 'No-Evidence MSJ — ' + debtorName;
+    bodyContent = caption + neMotionBody + '\n' + sigBlock + '\n' + certOfService;
+  } else if (variant === 'ne_order') {
+    title = 'Order Granting No-Evidence MSJ — ' + debtorName;
+    bodyContent = caption + orderBody('ne');
+  } else if (variant === 'combined') {
+    title = 'Combined Traditional & No-Evidence MSJ — ' + debtorName;
+    bodyContent = caption + combinedMotionBody + '\n' + sigBlock + '\n' + certOfService;
+  } else if (variant === 'combined_order') {
+    title = 'Order Granting Combined MSJ — ' + debtorName;
+    bodyContent = caption + orderBody('combined');
+  }
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escapeHtml(title)}</title><style>${CSS}</style></head><body>${printBar}<div id="doc-wrap">${bodyContent}</div></body></html>`;
+
+  const win = window.open('', '_blank');
+  if (!win) { toast('Pop-up blocked — allow pop-ups for this site', 'error'); return; }
+  win.document.write(html);
+  win.document.close();
+}
+// ── END MSJ GENERATOR ─────────────────────────────────────────────────────────
 
 function switchCaseTab(tab) {
   document.querySelectorAll('.case-tab').forEach(t => {
