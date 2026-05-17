@@ -7006,14 +7006,20 @@ async function generateDocWord(docType) {
   const prefix = docType === 'disclosures' ? 'disc'
                : docType === 'rogs'        ? 'rogs'
                : docType === 'rfp'         ? 'rfp'
-               : 'rfa';
+               : docType === 'rfa'         ? 'rfa'
+               : null; // petitions and other doc types have no input prefix
 
-  const causeNo    = document.getElementById('doc-' + prefix + '-causeno')?.value.trim() || m.cause_no || '';
-  const courtField = document.getElementById('doc-' + prefix + '-court')?.value.trim();
+  // Doc types that are filed before a cause number is assigned — blank is valid
+  const PRE_SUIT_TYPES = ['petition_1def','petition_2def','sub_service_mtn','sub_service_ord',
+                          'appt_sub_trustee','foreclosure_notice','foreclosure_ltr',
+                          'foreclosure_affidavit','foreclosure_posting','foreclosure_deed','deed_in_lieu'];
+
+  const causeNo    = (prefix ? document.getElementById('doc-' + prefix + '-causeno')?.value.trim() : '') || m.cause_no || '';
+  const courtField = prefix ? document.getElementById('doc-' + prefix + '-court')?.value.trim() : '';
   const court      = courtField || (m.court && m.county ? m.court + ', ' + m.county : m.court || m.county || '');
-  const svcDateRaw = document.getElementById('doc-' + prefix + '-date')?.value || '';
+  const svcDateRaw = prefix ? (document.getElementById('doc-' + prefix + '-date')?.value || '') : '';
 
-  if (!causeNo) { toast('Enter the Cause No. before generating', 'error'); return; }
+  if (!causeNo && !PRE_SUIT_TYPES.includes(docType)) { toast('Enter the Cause No. before generating', 'error'); return; }
 
   // Disclosures extras
   const payoff      = docType === 'disclosures' ? (document.getElementById('doc-disc-payoff')?.value.trim() || '') : '';
