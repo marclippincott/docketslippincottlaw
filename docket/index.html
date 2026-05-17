@@ -7187,17 +7187,15 @@ async function generateDocument(type) {
   // Certificate of service block
   const certOfService = (serviceDate, defendant, defAddr) => `<div style="page-break-before:always;">
 <p style="font-weight:bold;">CERTIFICATE OF SERVICE</p>
-<p>I certify that a true and correct copy of the above and foregoing document has been served on each attorney of record or party in accordance with the Texas Rule of Civil Procedure 21a on this ${serviceDate || today}.</p>
+<p>I certify that a true and correct copy of the above and foregoing document has been served on each attorney of record or party in accordance with Texas Rule of Civil Procedure 21a on this ${serviceDate || today}.</p>
 <div style="margin-top:36px;border-top:1px solid #000;width:300px;"></div>
 <div>Marc L. Lippincott</div>
-<div style="margin-top:20px;display:flex;gap:24px;">
-  <div style="border:1px solid #888;width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;"></div> hand-delivery
-  &nbsp;&nbsp;
-  <div style="border:1px solid #888;width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;"></div> telecopy
-  &nbsp;&nbsp;
-  <div style="background:#333;width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;"></div> first class mail
-  &nbsp;&nbsp;
-  <div style="background:#333;width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;"></div> certified mail, return receipt requested
+<div style="margin-top:20px;display:flex;gap:24px;flex-wrap:wrap;">
+  <span><span style="border:1px solid #000;width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;"></span> Hand-delivery</span>
+  <span><span style="border:1px solid #000;width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;"></span> Telecopy/Fax</span>
+  <span><span style="border:1px solid #000;width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;"></span> First class mail</span>
+  <span><span style="border:1px solid #000;width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;"></span> Certified mail, return receipt requested</span>
+  <span><span style="border:1px solid #000;width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;"></span> Electronic service (e-filing)</span>
 </div>
 <div style="margin-top:12px;">${escapeHtml(defendant)}<br>${escapeHtml(defAddr)}<br>Defendant Pro Se</div>
 </div>`;
@@ -7205,7 +7203,7 @@ async function generateDocument(type) {
   // Caption block for court documents
   const caption = (causeNo, court) => {
     const courtParts = (court || '').split(',').map(s => s.trim());
-    const courtLine  = courtParts[0] || '_____ JUDICIAL DISTRICT';
+    const courtLine  = courtParts[0] || '___________________________';
     const countyLine = courtParts[1] ? courtParts[1].toUpperCase() : '__________ COUNTY, TEXAS';
     return `<table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
   <tr>
@@ -7214,14 +7212,13 @@ async function generateDocument(type) {
       <div style="margin-left:20px;">Plaintiff,</div>
       <div style="margin-top:8px;">v.</div>
       <div style="margin-top:8px;">${escapeHtml(debtorName)}${coDebtorName ? '<br>' + escapeHtml(coDebtorName) : ''},</div>
-      <div style="margin-left:20px;">Defendant.</div>
+      <div style="margin-left:20px;">Defendant${coDebtorName ? 's' : ''}.</div>
     </td>
     <td style="width:50%;padding:4px 12px;vertical-align:top;border-left:2px solid #000;">
       <div>&#xA7;</div><div>&#xA7;</div><div>&#xA7;</div><div>&#xA7;</div><div>&#xA7;</div><div>&#xA7;</div>
-      <div style="margin-top:12px;font-weight:bold;">CAUSE NO. ${escapeHtml(causeNo || '____________')}</div>
-      <div style="margin-top:8px;">IN THE DISTRICT COURT OF</div>
+      <div style="margin-top:12px;font-weight:bold;text-align:center;">CAUSE NO. ${escapeHtml(causeNo || '____________')}</div>
+      <div style="margin-top:8px;">${escapeHtml(courtLine.toUpperCase())}</div>
       <div style="margin-top:8px;font-weight:bold;">${escapeHtml(countyLine)}</div>
-      <div style="margin-top:8px;font-weight:bold;">${escapeHtml(courtLine)}</div>
     </td>
   </tr>
 </table>`;
@@ -7364,12 +7361,13 @@ async function generateDocument(type) {
       toast('Select at least one debtor address', 'error'); return;
     }
 
-    // Address block builder
+    // Address block builder — always shows Regular Mail; adds CMRR block above it when a tracking number is entered
     const addrBlock = (name, addrObj) => {
-      const cmrrLine = addrObj.cmrr ? `<p style="margin:0;font-weight:bold;">VIA CERTIFIED MAIL</p><p style="margin:0;">CMRR #${escapeHtml(addrObj.cmrr)}</p>` : '';
+      const cmrrLine = addrObj.cmrr
+        ? `<p style="margin:0;font-weight:bold;">VIA CERTIFIED MAIL, RETURN RECEIPT REQUESTED</p><p style="margin:0;">CMRR #${escapeHtml(addrObj.cmrr)}</p><p style="margin:0;font-weight:bold;">AND VIA REGULAR MAIL</p>`
+        : `<p style="margin:0;font-weight:bold;">VIA REGULAR MAIL</p>`;
       return `<div style="flex:1;line-height:1.5;font-size:11pt;min-width:200px;">
         ${cmrrLine}
-        <p style="margin:0;font-weight:bold;">VIA REGULAR MAIL</p>
         <p style="margin:0;">${escapeHtml(name)}</p>
         <p style="margin:0;">${escapeHtml(addrObj.address)}</p>
       </div>`;
@@ -7408,7 +7406,7 @@ async function generateDocument(type) {
     </style></head><body>${printBar}<div id="doc-wrap">
 
     <div class="letterhead-wrap">
-      <div class="letterhead-addr" style="font-size:11pt;line-height:1.4;">11507 SUSIE ST.<br>AUSTIN, TEXAS 78704<br>(T) 512-472-2300 &nbsp; (F) 512-472-2303</div>
+      <div class="letterhead-addr" style="font-size:11pt;line-height:1.4;">11507 SUSIE ST.<br>AUSTIN, TEXAS 78748<br>(T) 512-472-2300 &nbsp; (F) 512-472-2303</div>
       <div class="letterhead-name">MARC L. LIPPINCOTT</div>
     </div>
 
@@ -7469,11 +7467,15 @@ async function generateDocument(type) {
 
     if (!causeNo) { toast('Enter the Cause No. before generating', 'error'); return; }
 
+    // Strip leading $ from user-entered payoff/perdiem in case they typed it
+    const payoffClean  = payoff.replace(/^\$/, '').trim()  || '_______________';
+    const perDiemClean = perDiem.replace(/^\$/, '').trim() || '_______________';
+
     html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Initial Disclosures — ${escapeHtml(debtorName)}</title><style>${CSS} h2{margin:24pt 0 12pt;}</style></head><body>${printBar}<div id="doc-wrap">
 ${caption(causeNo, court)}
 <h2>PLAINTIFF'S INITIAL DISCLOSURES</h2>
 <p><strong>TO:</strong>&nbsp;&nbsp;Defendant, ${escapeHtml(debtorName)}.</p>
-<p>Pursuant to the Texas Rules of Civil Procedure, Plaintiff, ${escapeHtml(plaintiffLine.replace(/\n/g,', '))}, serves its responses to Required Initial Disclosures.</p>
+<p>Pursuant to Rule 194 of the Texas Rules of Civil Procedure, Plaintiff, ${escapeHtml(plaintiffLine.replace(/\n/g,', '))}, serves its Required Initial Disclosures.</p>
 <div style="margin-top:36px;text-align:right;">
   Respectfully submitted,<br><br>
   The Lippincott Law Firm, PLLC<br>
@@ -7485,34 +7487,34 @@ ${caption(causeNo, court)}
 </div>
 ${certOfService(svcDate, debtorName, debtorAddr)}
 <div style="page-break-before:always;">
-<h2>RESPONSE TO INITIAL DISCLOSURE</h2>
+<h2>RESPONSES TO REQUIRED INITIAL DISCLOSURES</h2>
 <p><strong>DISCLOSURE NO. 1</strong><br>Correct names and addresses of parties to the lawsuit.</p>
 <p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;${escapeHtml(plaintiffLine.replace(/\n/g,', '))}<br>${escapeHtml(clientAddr)}<br><br>${escapeHtml(debtorName)}<br>${escapeHtml(debtorAddr)}</p>
 <p><strong>DISCLOSURE NO. 2</strong><br>Potential parties to the lawsuit.</p>
 <p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;None known at this time. Plaintiff reserves the right to supplement this response.</p>
 <p><strong>DISCLOSURE NO. 3</strong><br>Legal theories and factual bases of claims or defenses.</p>
-<p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;The pleadings in this case contain the legal theories and general factual bases for claims, or defenses. Generally, Defendant executed a ${escapeHtml(noteDesc)}. Defendant defaulted in the payment of the Contract, having failed to pay the regular monthly installments when due. Defendant is thus in breach of contract.</p>
+<p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;The pleadings contain the legal theories and general factual bases for Plaintiff's claims. Generally, Defendant executed a ${escapeHtml(noteDesc)}. Defendant defaulted by failing to make the required monthly installment payments when due and is thus in breach of contract. Plaintiff seeks judgment for the unpaid balance, prejudgment interest, attorney's fees, and possession of the Manufactured Home.</p>
 <p><strong>DISCLOSURE NO. 4</strong><br>Amount and any method of calculating economic damages.</p>
-<p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;Plaintiff will supplement, but the amount of the economic damages include the payoff amount, prejudgment interest and attorney's fees. As of ${today}, the payoff amount is $${escapeHtml(payoff)} (exclusive of attorney's fees and expenses), prejudgment interest at the rate of ${escapeHtml(rate)}% per annum (per diem rate of $${escapeHtml(perDiem)} per day), plus future reasonable and necessary attorneys' fees and expenses.</p>
-<p><strong>DISCLOSURE NO. 5</strong><br>Persons with Knowledge of Relevant Facts (Potential Witnesses).</p>
+<p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;Plaintiff will supplement, but the economic damages include the payoff amount, prejudgment interest, and attorney's fees. As of ${today}, the payoff amount is $${escapeHtml(payoffClean)} (exclusive of attorney's fees and expenses), prejudgment interest at the rate of ${escapeHtml(rate)}% per annum (per diem rate of $${escapeHtml(perDiemClean)} per day), plus future reasonable and necessary attorneys' fees and expenses.</p>
+<p><strong>DISCLOSURE NO. 5</strong><br>Persons with knowledge of relevant facts.</p>
 <p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;${escapeHtml(debtorName)} &ndash; ${escapeHtml(debtorAddr)}<br><br>
 Employees and custodians of records of ${escapeHtml(clientName)}, including but not limited to:<br>
 ${witnesses.map(w => escapeHtml(w)).join('<br>')}
-<br><br>All employee contact information c/o Plaintiff's attorney of record<br><br>
-Marc Lippincott is expected to provide expert testimony as to the reasonableness and necessity of any party's attorneys' fees. Mr. Lippincott is expected to testify that the fees and expenses charged by the firm to Plaintiff as standard hourly rates are reasonable and necessary fees incurred within this case. For a current resume, refer to www.thelippincottlawfirm.com. Plaintiff reserves the right to supplement this response.</p>
+<br><br>All employee contact information c/o Plaintiff's attorney of record.<br><br>
+Marc Lippincott is expected to provide expert testimony as to the reasonableness and necessity of attorney's fees. Mr. Lippincott is expected to testify that the fees and expenses charged by the firm at standard hourly rates are reasonable and necessary. For a current resume, refer to www.thelippincottlawfirm.com. Plaintiff reserves the right to supplement this response.</p>
 <p><strong>DISCLOSURE NO. 6</strong><br>Documents, electronic items, or tangible things relied upon to support claims.</p>
-<p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;Plaintiff will supplement, but see attached responsive documents.</p>
+<p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;Plaintiff will supplement; see attached responsive documents.</p>
 <p><strong>DISCLOSURE NO. 7</strong><br>Indemnity and insuring agreements.</p>
 <p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;None known at this time. Plaintiff reserves the right to supplement this response.</p>
 <p><strong>DISCLOSURE NO. 8</strong><br>Settlement agreements.</p>
 <p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;None known at this time. Plaintiff reserves the right to supplement this response.</p>
 <p><strong>DISCLOSURE NO. 9</strong><br>Witness statements.</p>
-<p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;None known written statements at this time, other than emails and correspondence between the parties. Plaintiff reserves the right to supplement this response.</p>
+<p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;No known written statements at this time other than emails and correspondence between the parties. Plaintiff reserves the right to supplement this response.</p>
 <p><strong>DISCLOSURE NO. 10</strong><br>Medical records or bills.</p>
 <p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;None applicable.</p>
-<p><strong>DISCLOSURE NO. 11</strong><br>Medical records or bills from 3rd party authorizations.</p>
+<p><strong>DISCLOSURE NO. 11</strong><br>Medical records or bills from third-party authorizations.</p>
 <p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;None applicable.</p>
-<p><strong>DISCLOSURE NO. 12</strong><br>Responsible 3rd parties.</p>
+<p><strong>DISCLOSURE NO. 12</strong><br>Responsible third parties.</p>
 <p class="indent"><strong>RESPONSE:</strong>&nbsp;&nbsp;None known.</p>
 </div>
 </div></body></html>`;
@@ -7551,17 +7553,13 @@ ${caption(causeNo, court)}
 ${sigAndCert}
 <div style="page-break-before:always;">
 <h2>PLAINTIFF'S FIRST SET OF INTERROGATORIES</h2>
-<p><em>[Standard instructions and definitions omitted for brevity — include full version per TRCP 197]</em></p>
-<p><strong>DEFINITIONS</strong> (key terms):<br>
-"Plaintiff" or "${escapeHtml(clientName.split(' ')[0])}" shall refer to ${escapeHtml(plaintiffLine.replace(/\n/g,', '))}.<br>
-"You," "your," or "Defendant" shall refer to ${defLine}.<br>
-${noteDefn}<br>
-${collateralDefn}</p>
+<p><strong>DEFINITIONS</strong><br>
+As used herein: "Plaintiff" or "${escapeHtml(clientName.split(' ')[0])}" means ${escapeHtml(plaintiffLine.replace(/\n/g,', '))}. "You," "your," or "Defendant" means ${defLine}. "Note" means the ${escapeHtml(noteDesc)}. "Collateral" means the ${escapeHtml(collateralFullDesc)}. "Document" has the meaning given in Texas Rule of Civil Procedure 192.3(b). "Identify" when used with respect to a person means to state the full name, last known address, and last known telephone number of that person.</p>
 ${[
   ['1','Identify each person other than your attorneys who either participated in the preparation of the responses to these interrogatories or supplied information used in such preparation. In your response, indicate the interrogatory or interrogatories with respect to which each person was involved.'],
   ['2','Provide each address at which you have resided in the last 12 months, the time period during which you resided at that address, whether you provided notice to the Plaintiff of each change of address, and if notice to the Plaintiff was provided, describe each specific notification, including the date, method, content, and parties thereto.'],
   ['3','Identify all documents or tangible things reviewed or relied on by you in preparation for your responses to these interrogatories. Alternatively, produce such documents contemporaneously with serving your responses.'],
-  ['4','As required by Rule 192.3(d) of the Texas Rules of Civil Procedure, identify the name, address, and telephone number of any person who is expected to be called to testify at trial.'],
+  ['4','Identify the name, last known address, and telephone number of each person who has knowledge of relevant facts, as contemplated by Rule 192.3(c) of the Texas Rules of Civil Procedure, and provide a brief statement of each identified person\'s connection to the facts in this case.'],
   ['5','With reference to the Note and Collateral identified therein, state or identify: (a) the date and amount of each payment made under the contract; (b) the principal balance due on the date of last payment; (c) the date, amount, and nature of each offset or credit Defendant claims; (d) the present location of the Collateral and the person who presently resides in it; (e) the name, address, and phone number of the owner of the real property upon which the Collateral is located.'],
   ['6','If any request for admission served contemporaneously herewith is not admitted, state in detail all facts known to you, directly or indirectly, which you contend to be either (1) the basis for your denial, or (2) the basis for your inability to admit the same.'],
   ['7','Identify each demand for payment you received from the Plaintiff and state the approximate date you received each demand (including invoices, statements, letters).'],
@@ -7584,11 +7582,8 @@ ${caption(causeNo, court)}
 ${sigAndCert}
 <div style="page-break-before:always;">
 <h2>PLAINTIFF'S FIRST REQUEST FOR PRODUCTION OF DOCUMENTS TO DEFENDANT</h2>
-<p><strong>DEFINITIONS</strong> (key terms):<br>
-"Plaintiff" or "${escapeHtml(clientName.split(' ')[0])}" shall refer to ${escapeHtml(plaintiffLine.replace(/\n/g,', '))}.<br>
-"You," "your," or "Defendant" shall refer to ${defLine}.<br>
-${noteDefn}<br>
-${collateralDefn}</p>
+<p><strong>DEFINITIONS</strong><br>
+As used herein: "Plaintiff" or "${escapeHtml(clientName.split(' ')[0])}" means ${escapeHtml(plaintiffLine.replace(/\n/g,', '))}. "You," "your," or "Defendant" means ${defLine}. "Note" means the ${escapeHtml(noteDesc)}. "Collateral" means the ${escapeHtml(collateralFullDesc)}. "Document" has the meaning given in Texas Rule of Civil Procedure 192.3(b) and includes all writings, drawings, graphs, charts, photographs, recordings, and other data compilations from which information can be obtained.</p>
 ${[
   ['1','Produce all documents related to any discoverable fact in this case.'],
   ['2','Produce all documents related to the Note and Collateral made the basis of this suit.'],
@@ -7620,15 +7615,12 @@ ${[
 ${caption(causeNo, court)}
 <h2>PLAINTIFF'S FIRST REQUEST FOR ADMISSIONS TO DEFENDANT</h2>
 <p><strong>TO:</strong>&nbsp;&nbsp;Defendant, ${defLine}.</p>
-<p>Plaintiff, ${escapeHtml(plaintiffLine.replace(/\n/g,', '))}, pursuant to Rules 193 and 198 of the Texas Rules of Civil Procedure, request that Defendant, ${defLine}, respond to the following Request for Admissions fully, in writing, and serve copies of the responses upon Plaintiff by and through its attorneys of record Marc L. Lippincott, The Lippincott Law Firm, PLLC, 11507 Susie St., Austin, Texas 78748, within 30 days of the date of service of this Request for Admissions. Please be aware that each answer is admitted without necessity of a court order unless, within 30 days after service of this Request for Admissions, Defendant serves a written answer or objection addressed to each such matter.</p>
+<p>Plaintiff, ${escapeHtml(plaintiffLine.replace(/\n/g,', '))}, pursuant to Rules 193 and 198 of the Texas Rules of Civil Procedure, requests that Defendant, ${defLine}, admit or deny each of the following matters. Each matter is admitted unless, within 30 days after service of this Request for Admissions, Defendant serves upon Plaintiff's attorneys of record a written answer or objection addressed to the matter. Tex. R. Civ. P. 198.2. Answers and objections should be served upon Plaintiff's attorneys of record, Marc L. Lippincott, The Lippincott Law Firm, PLLC, 11507 Susie St., Austin, Texas 78748.</p>
 ${sigAndCert}
 <div style="page-break-before:always;">
 <h2>PLAINTIFF'S FIRST REQUEST FOR ADMISSIONS</h2>
-<p><strong>DEFINITIONS</strong> (key terms):<br>
-"Plaintiff" or "${escapeHtml(clientName.split(' ')[0])}" shall refer to ${escapeHtml(plaintiffLine.replace(/\n/g,', '))}.<br>
-"You," "your," or "Defendant" shall refer to ${defLine}.<br>
-${noteDefn}<br>
-${collateralDefn}</p>
+<p><strong>DEFINITIONS</strong><br>
+As used herein: "Plaintiff" or "${escapeHtml(clientName.split(' ')[0])}" means ${escapeHtml(plaintiffLine.replace(/\n/g,', '))}. "You," "your," or "Defendant" means ${defLine}. "Note" means the ${escapeHtml(noteDesc)}. "Collateral" means the ${escapeHtml(collateralFullDesc)}.</p>
 ${[
   ['1','Written demand for payment of the claim sued upon was made on you more than thirty (30) days ago.'],
   ['2','After receiving demand for payment, Defendant failed to tender payment to Plaintiff.'],
